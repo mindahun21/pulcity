@@ -21,7 +21,7 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CustomUser
-        fields = ['id', 'email', 'role', 'profile']
+        fields = ['id', 'email', 'role','username', 'profile']
         
     def get_profile(self, obj):
       profile = obj.profile
@@ -53,7 +53,7 @@ class OrganizationRegisterSerializer(serializers.ModelSerializer):
     # Profile fields
     name = serializers.CharField(write_only=True, validators=[MinLengthValidator(2)])
     description = serializers.CharField(required=False, allow_blank=True, write_only=True)
-    logo_url = serializers.ImageField(required=False, allow_null=True, write_only=True)
+    logo_url = serializers.CharField(required=False, allow_null=True, write_only=True)
     contact_phone = serializers.CharField(required=False, allow_blank=True, write_only=True)
     website_url = serializers.URLField(required=False, allow_blank=True, write_only=True)
     social_media_links = serializers.JSONField(required=False, allow_null=True, write_only=True)
@@ -61,7 +61,7 @@ class OrganizationRegisterSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
         fields = [
-            'email', 'username', 'password',
+            'email','password',
             'name', 'description', 'logo_url',
             'contact_phone', 'website_url', 'social_media_links'
         ]

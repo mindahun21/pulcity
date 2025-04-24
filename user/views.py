@@ -35,7 +35,6 @@ class RegisterView(APIView):
 
 
 class OrganizationRegisterView(APIView):
-    parser_classes = [MultiPartParser, FormParser] 
     permission_classes = [AllowAny]
     
     def post(self, request):

@@ -61,7 +61,7 @@ class OrganizationProfile(models.Model):
     )
     name = models.CharField(max_length=255, validators=[MinLengthValidator(2)])
     description = models.TextField(blank=True, null=True)
-    logo_url = models.ImageField(upload_to='logo_photos/', blank=True, null=True)
+    logo_url = models.CharField(max_length=255, blank=True,null=True)
     contact_phone = models.CharField(max_length=20, blank=True, null=True)
     website_url = models.URLField(blank=True, null=True)
     social_media_links = models.JSONField(blank=True, null=True)
