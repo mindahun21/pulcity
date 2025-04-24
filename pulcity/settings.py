@@ -181,7 +181,7 @@ LOGGING = {
         'file': {
             'level': 'INFO',
             'class': 'logging.FileHandler',
-            'filename': os.path.join(BASE_DIR, 'logs/app.log'),  # or info.log
+            'filename': os.path.join(BASE_DIR, 'logs/app.log'), 
             'formatter': 'verbose',
         },
     },
@@ -192,4 +192,14 @@ LOGGING = {
             'propagate': True,
         },
     },
+}
+
+SPECTACULAR_SETTINGS = {
+    'SWAGGER_UI_DIST': 'SIDECAR', 
+    'SWAGGER_UI_FAVICON_HREF': 'SIDECAR',
+    'REDOC_DIST': 'SIDECAR',
+    'TITLE': 'Pulcity app api',
+    'DESCRIPTION': 'project description',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
 }
