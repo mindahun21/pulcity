@@ -1,0 +1,74 @@
+# Ignore the Python bytecode files
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+
+
+# Ignore virtual environments
+venv/
+
+# Ignore environment variables files
+.env
+*.env
+
+# Ignore Docker-related files that should not be in the container
+*.pid
+*.seed
+*.bak
+*.tmp
+*.swp
+*.sock
+
+# Ignore logs
+logs/
+*.log
+
+# Ignore media and static files (to be managed by your web server or cloud storage)
+media/
+staticfiles/
+
+
+# Ignore test files
+test.rest
+*.rest
+test/
+
+# Ignore IDE and editor files
+.vscode/
+.idea/
+
+# Ignore backup files
+*.bak
+*.swp
+*.swo
+*~
+*.sublime-workspace
+*.sublime-project
+
+# Ignore node_modules (if you have frontend work or NPM dependencies)
+node_modules/
+
+# Ignore Redis and Celery data
+redis-data/
+celerybeat-schedule
+
+# Ignore coverage and test artifacts
+.coverage
+coverage.xml
+htmlcov/
+*.cover
+tox/
+pytest_cache/
+nosetests.xml
+*.mo
+*.pot
+
+# Ignore Docker Compose override files (local custom configurations)
+docker-compose.override.yml
+
+# Ignore database files
+*.sqlite3
+
+# Ignore macOS system files
+.DS_Store

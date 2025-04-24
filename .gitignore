@@ -1,0 +1,95 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+*.pdb
+*.egg-info/
+*.egg
+*.env
+.env
+venv/
+.env.*
+
+# Django
+db.sqlite3
+*.log
+*.pot
+*.pyc
+local_settings.py
+media/
+staticfiles/
+
+# Redis
+dump.rdb
+redis-data/
+
+# Celery
+celerybeat-schedule
+celerybeat.pid
+
+# Docker
+*.pid
+*.seed
+*.backup
+*.tar
+*.bak
+*.tmp
+*.swp
+*.sock
+docker-compose.override.yml
+
+# Logs
+logs/
+*.log
+
+# Editor/IDE files
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# macOS
+.DS_Store
+
+# Node (if you ever have frontend work here)
+node_modules/
+
+# UploadThing cache (if ever used)
+.qodo/
+
+# Test & temporary files
+test/
+*.rest
+test.rest
+test_output/
+coverage/
+htmlcov/
+.tox/
+.cache/
+pytest_cache/
+*.cover
+nosetests.xml
+coverage.xml
+*.mo
+
+# System files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Compiled binary files
+*.so
+*.out
+*.o
+*.a
+*.dylib
+
+# Misc
+*.pem
+*.crt
+*.key
+*.tgz
+*.gz
+*.zip
