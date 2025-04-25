@@ -4,6 +4,9 @@ from .models import OTP
 from django.conf import settings
 from celery import shared_task
 from rest_framework_simplejwt.tokens import RefreshToken
+import logging
+
+logger = logging.getLogger(__name__)
   
 def generate_otp():
     """Generate a 6-digit random OTP."""
@@ -11,6 +14,8 @@ def generate_otp():
 
 @shared_task
 def send_verification_email(user_id, purpose="2FA", method="email"):
+    logger.info(f"Running email task for user {user_id} with purpose {purpose}")
+
     from user.models import CustomUser 
     user = CustomUser.objects.get(id=user_id)
 
