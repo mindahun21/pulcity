@@ -93,3 +93,5 @@ Desktop.ini
 *.tgz
 *.gz
 *.zip
+
+deploy.sh
