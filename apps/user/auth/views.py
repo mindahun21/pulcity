@@ -3,17 +3,16 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.contrib.auth import authenticate
 from django.utils import timezone
-from .models import CustomUser, Profile, OrganizationProfile, OTP
+from ..models import CustomUser, OTP
 from .serializers import (
     RegisterSerializer,
     OrganizationRegisterSerializer,
     LoginSerializer,
     ResetPasswordSerializer,
-    UserSerializer,
 )
-from .utils import send_verification_email, get_tokens_for_user
-from rest_framework.parsers import MultiPartParser, FormParser
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from ..serializers import UserSerializer
+from ..utils import send_verification_email, get_tokens_for_user
+from rest_framework.permissions import AllowAny
 
 
 
