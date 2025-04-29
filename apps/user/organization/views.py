@@ -5,12 +5,15 @@ from rest_framework import (
 )
 from rest_framework.response import Response
 from rest_framework.decorators import action
-from rest_framework.pagination import PageNumberPagination
 from apps.user.serializers import UserSerializer
 from apps.user.models import CustomUser
 from ..utils import ResponsePagination
+from apps.event.models import Event
+from apps.event.serializers import EventSerializer
+from drf_spectacular.utils import extend_schema
 
 
+@extend_schema(tags=["Organization Management"])
 class OrganizationViewSet(viewsets.ModelViewSet):
   serializer_class = UserSerializer
   permission_classes = [permissions.IsAuthenticated]
@@ -46,6 +49,17 @@ class OrganizationViewSet(viewsets.ModelViewSet):
     
     return paginator.get_paginated_response(
       serialized_followers.data
+    )
+    
+  @action(detail=False,methods=['get'])
+  def events(self, request):
+    events = Event.objects.filter(organizer=self.request.user)
+    paginator = ResponsePagination()
+    paginated_events = paginator.paginate_queryset(events, request)
+    serialized_events = EventSerializer(paginated_events, many=True)
+    
+    return paginator.get_paginated_response(
+      serialized_events.data
     )
         
   def list(self, request):

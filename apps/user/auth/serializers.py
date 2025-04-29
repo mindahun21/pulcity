@@ -70,6 +70,13 @@ class OrganizationRegisterSerializer(serializers.ModelSerializer):
 class LoginSerializer(serializers.Serializer):
     email = serializers.EmailField()
     password = serializers.CharField()
+    
+class VerifyEmailSerializer(serializers.Serializer):
+  email = serializers.EmailField()
+  otp= serializers.CharField()
+
+class ResendOtpSerializer(serializers.Serializer):
+  email = serializers.EmailField()
 
 
 class ResetPasswordSerializer(serializers.Serializer):

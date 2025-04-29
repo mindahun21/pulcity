@@ -6,13 +6,25 @@ class CategorySerializer(serializers.ModelSerializer):
     model = Category
     fields = [
       'id',
+      'organizer',
       'name',
       'description',
       'created_at',
       'updated_at',
     ]
-    read_only_fields = ['id', 'created_at','updated_at']
+    read_only_fields = ['id','organizer', 'created_at','updated_at']
 
+  def create(self, validated_data):
+    request = self.context.get('request')
+    
+    category = Category.objects.create(
+      organizer=request.user,
+      **validated_data
+    )
+    
+    return category
+    
+    
 
 class EventSerializer(serializers.ModelSerializer):
     category = serializers.ListField(

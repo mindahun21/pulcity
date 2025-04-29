@@ -26,11 +26,11 @@ INSTALLED_APPS = [
     'django_cleanup.apps.CleanupConfig',
     'drf_spectacular',
     'drf_spectacular_sidecar',
-
     
     # apps
     'apps.user',
     'apps.event',
+    'apps.payment',
 ]
 
 MIDDLEWARE = [
@@ -204,3 +204,7 @@ SPECTACULAR_SETTINGS = {
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
 }
+
+
+CHAPA_SECRET = config("CHAPA_SECRET")
+CHAPA_API_URL = 'https://api.chapa.co'

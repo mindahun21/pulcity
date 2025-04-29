@@ -21,3 +21,7 @@ pyshell:
 .PHONY: celery
 celery:
 	celery -A pulcity worker --loglevel=info
+
+.PHONY: dbshell
+dbshell:
+	python3 manage.py dbshell

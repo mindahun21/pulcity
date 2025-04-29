@@ -9,8 +9,10 @@ from rest_framework.decorators import action
 from apps.user.serializers import UserSerializer
 from apps.user.models import CustomUser
 from ..utils import ResponsePagination
+from drf_spectacular.utils import extend_schema
 
 
+@extend_schema(tags=["user management"])
 class UserViewSet(viewsets.ModelViewSet):
   serializer_class = [UserSerializer]
   permission_classes = [permissions.IsAuthenticated]
