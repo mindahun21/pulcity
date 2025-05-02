@@ -18,7 +18,7 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CustomUser
-        fields = ['id', 'email', 'role','username', 'profile']
+        fields = ['id', 'email', 'role','first_name','last_name','is_active','date_joined','username', 'profile']
         
     def get_profile(self, obj):
       profile = obj.profile
@@ -27,3 +27,21 @@ class UserSerializer(serializers.ModelSerializer):
       if obj.role == 'organization':
           return OrganizationProfileSerializer(profile).data
       return ProfileSerializer(profile).data
+
+
+class UserWithOrganizationProfileDocSerializer(serializers.ModelSerializer):
+    profile = OrganizationProfileSerializer()
+
+    class Meta:
+        model = CustomUser
+        fields = ['id', 'email', 'role', 'first_name', 'last_name', 'is_active', 'date_joined', 'username', 'profile']
+
+
+
+class UserWithAnyProfileDocSerializer(serializers.ModelSerializer):
+    profile = ProfileSerializer()
+
+    class Meta:
+        model = CustomUser
+        fields = ['id', 'email', 'role', 'first_name', 'last_name', 'is_active', 'date_joined', 'username', 'profile']
+
