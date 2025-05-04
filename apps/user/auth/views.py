@@ -109,8 +109,14 @@ class OrganizationRegisterView(APIView):
                 name="VerifyEmailSuccessResponse",
                 fields={
                     "message": serializers.CharField(),
-                    "tokens": serializers.DictField(),
-                    "user": UserSerializer(),
+                    "tokens": inline_serializer(
+                        name="TokensSerializer",
+                        fields={
+                            "access": serializers.CharField(),
+                            "refresh": serializers.CharField(),
+                        },
+                    ),
+                    "user": UserWithAnyProfileDocSerializer(),
                 },
             ),
             description="Email successfully verified.",

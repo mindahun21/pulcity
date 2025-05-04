@@ -23,6 +23,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'rest_framework',
     'rest_framework_simplejwt',
+    'rest_framework_simplejwt.token_blacklist',
     'django_celery_results',
     'django_cleanup.apps.CleanupConfig',
     'drf_spectacular',
@@ -32,6 +33,7 @@ INSTALLED_APPS = [
     'apps.user',
     'apps.event',
     'apps.payment',
+    'apps.community',
 ]
 
 MIDDLEWARE = [
@@ -234,3 +236,5 @@ SPECTACULAR_SETTINGS = {
 
 CHAPA_SECRET = config("CHAPA_SECRET")
 CHAPA_API_URL = 'https://api.chapa.co'
+CHAPA_CALLBACK_URL= config("CHAPA_CALLBACK_URL")
+CHAPA_RETURN_URL= config("CHAPA_RETURN_URL")

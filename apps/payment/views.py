@@ -1,12 +1,14 @@
-import time
-import random
-import httpx
-from chapa import Chapa
+import httpx, logging, random, time, json
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from django.conf import settings
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
+
+from chapa import Chapa
+from chapa.webhook import verify_webhook
 
 from .models import Payment
 from .serializers import (
@@ -15,13 +17,15 @@ from .serializers import (
   ChapaHostedLinkResponseSerializer,
   PaymentDetailResponseSerializer,
 )
-from apps.event.models import Ticket
+from apps.event.models import Ticket, UserTicket
+from apps.community.models import Community, UserCommunity
 from drf_spectacular.utils import extend_schema
 
 
 
 
 chapa = Chapa(settings.CHAPA_SECRET)
+logger = logging.getLogger('django')
 
 @extend_schema(tags=["Payment"])
 class InitiatePaymentView(APIView):
@@ -52,8 +56,8 @@ class InitiatePaymentView(APIView):
         "email":request.user.email,
         "first_name":request.user.first_name,
         "last_name":request.user.last_name,
-        "callback_url":"http://localhost:5173/account/verified",
-        "return_url":"http://localhost:5173/account/verified",
+        "callback_url":settings.CHAPA_CALLBACK_URL,
+        "return_url":settings.CHAPA_RETURN_URL,
         'customization': {
           'title': 'Event Payment',
           'description': 'Payment for Pulcity event ticket',
@@ -99,10 +103,66 @@ class VerifyPaymentView(APIView):
     headers = {"Authorization": f"Bearer {settings.CHAPA_SECRET}"}
     url = f"https://api.chapa.co/v1/transaction/verify/{tx_ref}"
 
-    response = httpx.get(url, headers=headers).json()
+    try:
+      response = httpx.get(url, headers=headers)
+      chapa_data = response.json()
+    except Exception as e:
+        return Response({"detail": "Failed to contact Chapa."}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+    if chapa_data.get('status') != "success":
+      return Response(chapa_data, status=status.HTTP_400_BAD_REQUEST)
     
-    if response['status'] != "success":
-      payment.status = "success"
-      payment.save()
+    payment.status = "success"
+    payment.save()
     
+    UserTicket.objects.get_or_create(user=payment.user, ticket=payment.ticket)
+    if hasattr(payment.ticket.event, 'community'):
+      community = payment.ticket.event.community
+      UserCommunity.objects.get_or_create(user=payment.user, community=community)
+
     return Response(response)
+
+@extend_schema(exclude=True)
+@method_decorator(csrf_exempt, name='dispatch')
+class ChapaWebhookView(APIView):
+    def post(self, request):
+        raw_body = request.body
+        chapa_signature = request.headers.get("Chapa-Signature")
+
+        logger.info("Received Chapa webhook request.")
+
+        if not chapa_signature:
+            logger.warning("Missing Chapa-Signature in webhook request.")
+            return Response({"detail": "Missing Chapa-Signature"}, status=400)
+
+        try:
+            body = json.loads(raw_body)
+        except json.JSONDecodeError:
+            logger.error("Invalid JSON in webhook request.")
+            return Response({"detail": "Invalid JSON"}, status=400)
+
+        if not verify_webhook(settings.CHAPA_SECRET, body, chapa_signature):
+            logger.error("Invalid Chapa signature for webhook.")
+            return Response({"detail": "Invalid signature"}, status=400)
+
+        event = body.get("event")
+        data = body.get("data", {})
+        tx_ref = data.get("tx_ref")
+
+        logger.info(f"Webhook event: {event}, tx_ref: {tx_ref}")
+
+        if event == "charge.success" and tx_ref:
+            try:
+                payment = Payment.objects.get(tx_ref=tx_ref)
+                logger.info(f"Found payment with tx_ref={tx_ref}")
+            except Payment.DoesNotExist:
+                logger.warning(f"Payment with tx_ref={tx_ref} not found.")
+                return Response({"detail": "Payment not found"}, status=404)
+
+            if payment.status != "success":
+                payment.status = "success"
+                payment.save()
+                UserTicket.objects.get_or_create(user=payment.user, ticket=payment.ticket)
+                logger.info(f"Payment marked as success and UserTicket created for user={payment.user.id}")
+
+        return Response({"detail": "Webhook received"}, status=200)

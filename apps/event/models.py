@@ -3,7 +3,6 @@ from apps.user.models import CustomUser
 from django.core.validators import MinValueValidator, MaxValueValidator
 
 
-
 class Category(models.Model):
     organizer = models.ForeignKey(CustomUser, related_name='categories', on_delete=models.SET_NULL, null=True, blank=True)
     name = models.CharField(max_length=255)
@@ -13,7 +12,6 @@ class Category(models.Model):
 
     def __str__(self):
         return self.name
-
 
 class Event(models.Model):
   organizer  = models.ForeignKey(CustomUser,related_name='events',on_delete=models.CASCADE)
@@ -47,7 +45,6 @@ class Event(models.Model):
   def __str__(self):
       return self.title
     
-    
 class Ticket(models.Model):
     event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name='tickets')
     name = models.CharField(max_length=255)
@@ -59,3 +56,11 @@ class Ticket(models.Model):
 
     def __str__(self):
         return f"{self.name} - {self.price} ETB"
+      
+class UserTicket(models.Model):
+  user = models.ForeignKey(CustomUser, on_delete=models.SET_NULL,related_name="tickets", null=True, blank=True)
+  ticket = models.ForeignKey(Ticket, on_delete=models.CASCADE, related_name="users_purchased")
+  purchase_date = models.DateTimeField(auto_now_add=True)
+  
+  
+  

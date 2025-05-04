@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from .models import Category, Event
+from apps.community.models import Community
 
 class CategorySerializer(serializers.ModelSerializer):
   class Meta:
@@ -27,9 +28,9 @@ class CategorySerializer(serializers.ModelSerializer):
     
 
 class EventSerializer(serializers.ModelSerializer):
-    category = serializers.ListField(
-        child=serializers.IntegerField(),
-        write_only=True,
+    category = serializers.PrimaryKeyRelatedField(
+        many=True,
+        queryset=Category.objects.all()
     )
 
     class Meta:
@@ -56,30 +57,31 @@ class EventSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         request = self.context.get('request')
-        category_ids = validated_data.pop('category', [])
+        category_objs = validated_data.pop('category', [])
         
-        # Set organizer from request.user
         event = Event.objects.create(
             organizer=request.user,
             **validated_data
         )
         
-        if category_ids:
-            categories = Category.objects.filter(id__in=category_ids)
-            event.category.set(categories)
+        event.category.set(category_objs)
+
+        Community.objects.create(
+            event=event,
+            name=event.title,
+            description=event.description
+        )
 
         return event
 
     def update(self, instance, validated_data):
-        category_ids = validated_data.pop('category', None)
-        
-        # Update all other fields normally
+        category_objs = validated_data.pop('category', None)
+
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()
 
-        if category_ids is not None:
-            categories = Category.objects.filter(id__in=category_ids)
-            instance.category.set(categories)
+        if category_objs is not None:
+            instance.category.set(category_objs)
 
         return instance
