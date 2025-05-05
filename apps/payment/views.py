@@ -143,7 +143,7 @@ class ChapaWebhookView(APIView):
             logger.error("Invalid JSON in webhook request.")
             return Response({"detail": "Invalid JSON"}, status=400)
 
-        if not verify_webhook(settings.CHAPA_SECRET, body, chapa_signature):
+        if not verify_webhook(settings.CHAPA_SECRET_HASH, body, chapa_signature):
             logger.error("Invalid Chapa signature for webhook.")
             return Response({"detail": "Invalid signature"}, status=400)
 
