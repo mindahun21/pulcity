@@ -120,7 +120,7 @@ class VerifyPaymentView(APIView):
       community = payment.ticket.event.community
       UserCommunity.objects.get_or_create(user=payment.user, community=community)
 
-    return Response(response)
+    return Response(chapa_data)
 
 @extend_schema(exclude=True)
 @method_decorator(csrf_exempt, name='dispatch')

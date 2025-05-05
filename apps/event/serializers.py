@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from .models import Category, Event
 from apps.community.models import Community
+from apps.user.serializers import UserWithOrganizationProfileDocSerializer
 
 class CategorySerializer(serializers.ModelSerializer):
   class Meta:
@@ -32,6 +33,7 @@ class EventSerializer(serializers.ModelSerializer):
         many=True,
         queryset=Category.objects.all()
     )
+    organizer = UserWithOrganizationProfileDocSerializer(read_only=True)
     #TODO: pay_onsite
 
     class Meta:
