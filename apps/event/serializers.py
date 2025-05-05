@@ -32,6 +32,7 @@ class EventSerializer(serializers.ModelSerializer):
         many=True,
         queryset=Category.objects.all()
     )
+    #TODO: pay_onsite
 
     class Meta:
         model = Event
