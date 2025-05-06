@@ -8,7 +8,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 
 from chapa import Chapa
-from chapa.webhook import verify_webhook
+from chapa import verify_webhook
 
 from .models import Payment
 from .serializers import (
@@ -142,14 +142,14 @@ class ChapaWebhookView(APIView):
         logger.debug(f"Webhook received from IP: {client_ip}")
 
         raw_body = request.body
-        chapa_signature = request.headers.get("Chapa-Signature") or request.headers.get("x-chapa-signature")
+        chapa_signature = request.headers.get("Chapa-Signature") 
         logger.info("Received Chapa webhook request.")
 
         if not chapa_signature:
             logger.warning("Missing Chapa-Signature in webhook request.")
             return Response({"detail": "Missing Chapa-Signature"}, status=400)
         
-        if not custom_verify_webhook(settings.CHAPA_SECRET_HASH, raw_body, chapa_signature):
+        if not verify_webhook(settings.CHAPA_SECRET_HASH, raw_body, chapa_signature):
             logger.error("Invalid Chapa signature for webhook.")
             return Response({"detail": "Invalid signature"}, status=400)
 
