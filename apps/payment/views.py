@@ -1,4 +1,4 @@
-import httpx, logging, random, time, json
+import httpx, logging, random, time, json, hmac, hashlib
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -26,6 +26,11 @@ from drf_spectacular.utils import extend_schema
 
 chapa = Chapa(settings.CHAPA_SECRET)
 logger = logging.getLogger('django')
+
+def custom_verify_webhook(secret_key: str, raw_body: bytes, chapa_signature: str) -> bool:
+    signature = hmac.new(secret_key.encode(), raw_body, hashlib.sha256).hexdigest()
+    return signature == chapa_signature
+
 
 @extend_schema(tags=["Payment"])
 class InitiatePaymentView(APIView):
@@ -129,23 +134,22 @@ class ChapaWebhookView(APIView):
     permission_classes = [AllowAny]
     def post(self, request):
         raw_body = request.body
-        chapa_signature = request.headers.get("Chapa-Signature")
-
+        chapa_signature = request.headers.get("Chapa-Signature") or request.headers.get("x-chapa-signature")
         logger.info("Received Chapa webhook request.")
 
         if not chapa_signature:
             logger.warning("Missing Chapa-Signature in webhook request.")
             return Response({"detail": "Missing Chapa-Signature"}, status=400)
+        
+        if not custom_verify_webhook(settings.CHAPA_SECRET_HASH, raw_body, chapa_signature):
+            logger.error("Invalid Chapa signature for webhook.")
+            return Response({"detail": "Invalid signature"}, status=400)
 
         try:
             body = json.loads(raw_body)
         except json.JSONDecodeError:
             logger.error("Invalid JSON in webhook request.")
             return Response({"detail": "Invalid JSON"}, status=400)
-
-        if not verify_webhook(settings.CHAPA_SECRET_HASH, body, chapa_signature):
-            logger.error("Invalid Chapa signature for webhook.")
-            return Response({"detail": "Invalid signature"}, status=400)
 
         event = body.get("event")
         data = body.get("data", {})
