@@ -20,6 +20,7 @@ from .serializers import (
 from apps.event.models import Ticket, UserTicket
 from apps.community.models import Community, UserCommunity
 from drf_spectacular.utils import extend_schema
+from django.http import HttpResponse
 
 
 
@@ -152,6 +153,7 @@ class ChapaWebhookView(APIView):
         tx_ref = data.get("tx_ref")
 
         logger.info(f"Webhook event: {event}, tx_ref: {tx_ref}")
+        logger.info(json.dumps(body, indent=2))
 
         if event == "charge.success" and tx_ref:
             try:
@@ -216,4 +218,7 @@ class ChapaReturnView(APIView):
     permission_classes = [AllowAny]
 
     def get(self, request, event_id):
-        return redirect(f'pulcity://checkout/{event_id}')
+        url = f'pulcity://checkout/{event_id}'
+        response = HttpResponse(status=302)
+        response['Location'] = url
+        return response
