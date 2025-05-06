@@ -27,11 +27,6 @@ from drf_spectacular.utils import extend_schema
 chapa = Chapa(settings.CHAPA_SECRET)
 logger = logging.getLogger('django')
 
-def custom_verify_webhook(secret_key: str, body_dict: dict, chapa_signature: str) -> bool:
-    raw_json = json.dumps(body_dict, separators=(',', ':'), ensure_ascii=False)
-    signature = hmac.new(secret_key.encode(), raw_json.encode(), hashlib.sha256).hexdigest()
-    return signature == chapa_signature
-
 @extend_schema(tags=["Payment"])
 class InitiatePaymentView(APIView):
   serializer_class = PaymentInitiateSerializer
@@ -53,6 +48,8 @@ class InitiatePaymentView(APIView):
         ticket = Ticket.objects.get(id=ticket_id)
       except Ticket.DoesNotExist:
           return Response({"detail": "Ticket not found."}, status=status.HTTP_404_NOT_FOUND)
+        
+      event_id = ticket.event.id
       
       data = {
         "tx_ref":tx_ref,
@@ -61,8 +58,8 @@ class InitiatePaymentView(APIView):
         "email":request.user.email,
         "first_name":request.user.first_name,
         "last_name":request.user.last_name,
-        "callback_url":settings.CHAPA_CALLBACK_URL,
-        "return_url":settings.CHAPA_RETURN_URL,
+        "callback_url": f"pulcity://checkout/{event_id}",
+        "return_url": f"pulcity://checkout/{event_id}",
         'customization': {
           'title': 'Event Payment',
           'description': 'Payment for Pulcity event ticket',
@@ -150,11 +147,6 @@ class ChapaWebhookView(APIView):
             logger.error("Invalid JSON in webhook request.")
             return Response({"detail": "Invalid JSON"}, status=400)
         
-        if not custom_verify_webhook(settings.CHAPA_SECRET_HASH, body, chapa_signature):
-            logger.error("Invalid Chapa signature for webhook.")
-            return Response({"detail": "Invalid signature"}, status=400)
-
-
         event = body.get("event")
         data = body.get("data", {})
         tx_ref = data.get("tx_ref")
