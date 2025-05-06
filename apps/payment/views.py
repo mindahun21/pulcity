@@ -27,15 +27,10 @@ from drf_spectacular.utils import extend_schema
 chapa = Chapa(settings.CHAPA_SECRET)
 logger = logging.getLogger('django')
 
-def custom_verify_webhook(secret_key: str, raw_body: bytes, chapa_signature: str) -> bool:
-    signature = hmac.new(secret_key.encode(), raw_body, hashlib.sha256).hexdigest()
-    
-    logger.info(f"Chapa Signature Header: {chapa_signature}")
-    logger.info(f":CHAPA_SECRET_HASH {secret_key}")
-    logger.info(f"Calculated Signature:   {signature}")
-    logger.info(f"Raw Body: {raw_body.decode(errors='replace')}")
+def custom_verify_webhook(secret_key: str, body_dict: dict, chapa_signature: str) -> bool:
+    raw_json = json.dumps(body_dict, separators=(',', ':'), ensure_ascii=False)
+    signature = hmac.new(secret_key.encode(), raw_json.encode(), hashlib.sha256).hexdigest()
     return signature == chapa_signature
-
 
 @extend_schema(tags=["Payment"])
 class InitiatePaymentView(APIView):
@@ -139,7 +134,7 @@ class ChapaWebhookView(APIView):
     permission_classes = [AllowAny]
     def post(self, request):
         client_ip = request.META.get('REMOTE_ADDR')
-        logger.debug(f"Webhook received from IP: {client_ip}")
+        logger.info(f"Webhook received from IP: {client_ip}")
 
         raw_body = request.body
         chapa_signature = request.headers.get("Chapa-Signature") 
@@ -155,7 +150,7 @@ class ChapaWebhookView(APIView):
             logger.error("Invalid JSON in webhook request.")
             return Response({"detail": "Invalid JSON"}, status=400)
         
-        if not verify_webhook(settings.CHAPA_SECRET_HASH, body, chapa_signature):
+        if not custom_verify_webhook(settings.CHAPA_SECRET_HASH, body, chapa_signature):
             logger.error("Invalid Chapa signature for webhook.")
             return Response({"detail": "Invalid signature"}, status=400)
 
