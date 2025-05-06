@@ -69,7 +69,7 @@ class InitiatePaymentView(APIView):
       response = chapa.initialize(**data)
 
       if response.get("status") != "success":
-        return Response({"detail":"Failed to initialize payment"})
+        return Response({"detail":"Failed to initialize payment","chapa_response":response})
       
       Payment.objects.create(
           user=request.user,
