@@ -148,16 +148,17 @@ class ChapaWebhookView(APIView):
         if not chapa_signature:
             logger.warning("Missing Chapa-Signature in webhook request.")
             return Response({"detail": "Missing Chapa-Signature"}, status=400)
-        
-        if not verify_webhook(settings.CHAPA_SECRET_HASH, raw_body, chapa_signature):
-            logger.error("Invalid Chapa signature for webhook.")
-            return Response({"detail": "Invalid signature"}, status=400)
 
         try:
             body = json.loads(raw_body)
         except json.JSONDecodeError:
             logger.error("Invalid JSON in webhook request.")
             return Response({"detail": "Invalid JSON"}, status=400)
+        
+        if not verify_webhook(settings.CHAPA_SECRET_HASH, body, chapa_signature):
+            logger.error("Invalid Chapa signature for webhook.")
+            return Response({"detail": "Invalid signature"}, status=400)
+
 
         event = body.get("event")
         data = body.get("data", {})
