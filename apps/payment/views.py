@@ -58,8 +58,8 @@ class InitiatePaymentView(APIView):
         "email":request.user.email,
         "first_name":request.user.first_name,
         "last_name":request.user.last_name,
-        "callback_url": f"pulcity://checkout/{event_id}",
-        "return_url": f"pulcity://checkout/{event_id}",
+        "callback_url": f"https://mindahun.pro.et/api/v1/payment/callback/{tx_ref}/",
+        "return_url": f"https://mindahun.pro.et/api/v1/payment/return/{event_id}/",
         'customization': {
           'title': 'Event Payment',
           'description': 'Payment for Pulcity event ticket',
@@ -168,3 +168,52 @@ class ChapaWebhookView(APIView):
                 logger.info(f"Payment marked as success and UserTicket created for user={payment.user.id}")
 
         return Response({"detail": "Webhook received"}, status=200)
+
+@extend_schema(exclude=True)
+class ChapaCallbackView(APIView):
+  authentication_classes = [] 
+  permission_classes = [AllowAny]
+  
+  def post(self, request, event_id):
+    logger.info("Chapa callback received")
+
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        logger.error("Invalid JSON in callback")
+        return Response({"detail": "Invalid JSON"}, status=400)
+
+    event = data.get("event")
+    tx_ref = data.get("data", {}).get("tx_ref")
+
+    logger.info(f"Event: {event}, tx_ref: {tx_ref}")
+    try:
+      payment = Payment.objects.get(tx_ref=tx_ref)
+    except Payment.DoesNotExist:
+      return Response({"detail":f"No payment initialized with tx_ref = {tx_ref} "})
+
+
+    if event == "charge.success" and tx_ref:
+        logger.info("Payment was successful")
+        payment.status = "success"
+        payment.save()
+        
+        UserTicket.objects.get_or_create(user=payment.user, ticket=payment.ticket)
+        if hasattr(payment.ticket.event, 'community'):
+          community = payment.ticket.event.community
+          UserCommunity.objects.get_or_create(user=payment.user, community=community)
+
+    else:
+        logger.warning("Payment was not successful")
+
+    return Response({"detail": "Callback processed"}, status=200)
+  
+from django.shortcuts import redirect
+
+@extend_schema(exclude=True)
+class ChapaReturnView(APIView):
+    authentication_classes = [] 
+    permission_classes = [AllowAny]
+
+    def get(self, request, event_id):
+        return redirect(f'pulcity://checkout/{event_id}')
