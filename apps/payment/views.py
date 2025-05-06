@@ -30,10 +30,10 @@ logger = logging.getLogger('django')
 def custom_verify_webhook(secret_key: str, raw_body: bytes, chapa_signature: str) -> bool:
     signature = hmac.new(secret_key.encode(), raw_body, hashlib.sha256).hexdigest()
     
-    logger.debug(f"Chapa Signature Header: {chapa_signature}")
-    logger.debug(f":CHAPA_SECRET_HASH {secret_key}")
-    logger.debug(f"Calculated Signature:   {signature}")
-    logger.debug(f"Raw Body: {raw_body.decode(errors='replace')}")
+    logger.info(f"Chapa Signature Header: {chapa_signature}")
+    logger.info(f":CHAPA_SECRET_HASH {secret_key}")
+    logger.info(f"Calculated Signature:   {signature}")
+    logger.info(f"Raw Body: {raw_body.decode(errors='replace')}")
     return signature == chapa_signature
 
 
