@@ -59,7 +59,6 @@ class InitiatePaymentView(APIView):
         "email":request.user.email,
         "first_name":request.user.first_name,
         "last_name":request.user.last_name,
-        "callback_url": f"https://mindahun.pro.et/api/v1/payment/callback/{tx_ref}/",
         "return_url": f"https://mindahun.pro.et/api/v1/payment/return/{event_id}/",
         'customization': {
           'title': 'Event Payment',
@@ -149,25 +148,30 @@ class ChapaWebhookView(APIView):
             return Response({"detail": "Invalid JSON"}, status=400)
         
         event = body.get("event")
-        data = body.get("data", {})
-        tx_ref = data.get("tx_ref")
+        tx_ref = body.get("tx_ref")
 
         logger.info(f"Webhook event: {event}, tx_ref: {tx_ref}")
-        logger.info(json.dumps(body, indent=2))
+        if not tx_ref:
+            logger.warning("Missing tx_ref in webhook data.")
+            return Response({"detail": "Missing tx_ref"}, status=400)
 
-        if event == "charge.success" and tx_ref:
+        if event == "charge.success":
             try:
                 payment = Payment.objects.get(tx_ref=tx_ref)
                 logger.info(f"Found payment with tx_ref={tx_ref}")
             except Payment.DoesNotExist:
                 logger.warning(f"Payment with tx_ref={tx_ref} not found.")
-                return Response({"detail": "Payment not found"}, status=404)
+                return Response({"detail": "Webhook received but payment not found"}, status=200)
 
             if payment.status != "success":
                 payment.status = "success"
                 payment.save()
                 UserTicket.objects.get_or_create(user=payment.user, ticket=payment.ticket)
                 logger.info(f"Payment marked as success and UserTicket created for user={payment.user.id}")
+        
+        else:
+            logger.info(f"Ignoring non-successful payment event: {event}")
+
 
         return Response({"detail": "Webhook received"}, status=200)
 
