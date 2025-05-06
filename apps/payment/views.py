@@ -59,7 +59,7 @@ class InitiatePaymentView(APIView):
         "email":request.user.email,
         "first_name":request.user.first_name,
         "last_name":request.user.last_name,
-        "return_url": f"https://mindahun.pro.et/api/v1/payment/return/{event_id}/",
+        "return_url": f"https://mindahun.pro.et/api/v1/payment/return/{event_id}/{tx_ref}",
         'customization': {
           'title': 'Event Payment',
           'description': 'Payment for Pulcity event ticket',
@@ -221,8 +221,8 @@ class ChapaReturnView(APIView):
     authentication_classes = [] 
     permission_classes = [AllowAny]
 
-    def get(self, request, event_id):
-        url = f'pulcity://checkout/{event_id}'
+    def get(self, request, event_id, tx_ref):
+        url = f'pulcity://checkout/{event_id}/{tx_ref}'
         response = HttpResponse(status=302)
         response['Location'] = url
         return response
