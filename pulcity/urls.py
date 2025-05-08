@@ -18,6 +18,7 @@ urlpatterns = [
     path('api/v1/', include('apps.event.urls')),
     path('api/v1/community/', include('apps.community.urls')),
     path('api/v1/payment/', include('apps.payment.urls')),
+    path('api/v1/', include('apps.notification.urls')),
 ]
 
 if settings.DEBUG:

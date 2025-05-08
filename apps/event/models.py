@@ -12,6 +12,14 @@ class Category(models.Model):
 
     def __str__(self):
         return self.name
+      
+class Hashtag(models.Model):
+  name = models.CharField(max_length=20, unique=True)
+  created_at = models.DateTimeField(auto_now_add=True)
+  updated_at = models.DateTimeField(auto_now=True)
+  
+  def __str__(self):
+     return self.name
 
 class Event(models.Model):
   organizer  = models.ForeignKey(CustomUser,related_name='events',on_delete=models.CASCADE)
@@ -39,11 +47,22 @@ class Event(models.Model):
   )
   cover_image_url = models.URLField(blank=True, null=True)
   is_public = models.BooleanField(default=True)
+  onsite_payement = models.BooleanField(default=False)
+  
+  hashtags = models.ManyToManyField(Hashtag, related_name='events')
+  likes = models.ManyToManyField(CustomUser,related_name='likes')
+  
   created_at = models.DateTimeField(auto_now_add=True)
   updated_at = models.DateTimeField(auto_now=True)
 
   def __str__(self):
       return self.title
+    
+  def is_liked(self, user):
+    """Check if the given user has liked this event."""
+    if user.is_authenticated:
+        return self.likes.filter(id=user.id).exists()
+    return False
     
 class Ticket(models.Model):
     event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name='tickets')

@@ -1,8 +1,9 @@
 from rest_framework import serializers
 from apps.event.models import Ticket, Event
+from drf_spectacular.utils import extend_schema_field
 
 class TicketSerializer(serializers.ModelSerializer):
-
+    onsite_payement=serializers.SerializerMethodField()
     class Meta:
         model = Ticket
         fields = [
@@ -12,15 +13,20 @@ class TicketSerializer(serializers.ModelSerializer):
             'price',
             'valid_from',
             'valid_until',
+            'onsite_payement',
             'created_at',
             'updated_at'
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at','onsite_payement']
 
     def validate_name(self, value):
         if len(value) < 2:
             raise serializers.ValidationError("Name must be at least 2 characters long.")
         return value
+
+    @extend_schema_field(serializers.BooleanField())
+    def get_onsite_payement(self, obj):
+      return obj.event.onsite_payement
 
     def validate_price(self, value):
         if value <= 0:
@@ -37,3 +43,7 @@ class TicketSerializer(serializers.ModelSerializer):
         
         return Ticket.objects.create(**validated_data)
     
+
+class OnsitePaymentserializer(serializers.Serializer):
+  add_to_community = serializers.BooleanField(default=False)
+  

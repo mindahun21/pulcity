@@ -34,6 +34,7 @@ INSTALLED_APPS = [
     'apps.event',
     'apps.payment',
     'apps.community',
+    'apps.notification',
 ]
 
 MIDDLEWARE = [

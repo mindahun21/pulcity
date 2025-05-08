@@ -1,8 +1,8 @@
 from rest_framework import serializers
-from .models import Category, Event
+from .models import Category, Event, Hashtag
 from apps.community.models import Community
 from apps.user.serializers import UserWithOrganizationProfileDocSerializer
-
+from drf_spectacular.utils import extend_schema_field
 class CategorySerializer(serializers.ModelSerializer):
   class Meta:
     model = Category
@@ -26,65 +26,108 @@ class CategorySerializer(serializers.ModelSerializer):
     
     return category
     
-    
+class HashtagSerializer(serializers.ModelSerializer):
+  class Meta:
+    model = Hashtag
+    fields = ['name']
 
 class EventSerializer(serializers.ModelSerializer):
-    category = serializers.PrimaryKeyRelatedField(
-        many=True,
-        queryset=Category.objects.all()
+  category = serializers.PrimaryKeyRelatedField(
+    many=True,
+    queryset=Category.objects.all()
+  )
+  organizer = UserWithOrganizationProfileDocSerializer(read_only=True)
+  hashtags_list = serializers.ListField(
+    child=serializers.CharField(),
+    write_only=True,
+    help_text="List of hashtag names"
+  )
+  hashtags = HashtagSerializer(many=True, read_only=True)
+  likes_count = serializers.SerializerMethodField(help_text="Number of likes (integer)")
+  liked = serializers.SerializerMethodField(help_text="Whether the user liked the event (boolean)")
+
+  class Meta:
+    model = Event
+    fields = [
+      'id',
+      'organizer',
+      'category',
+      'title',
+      'description',
+      'start_time',
+      'end_time',
+      'start_date',
+      'end_date',
+      'location',
+      'latitude',
+      'longitude',
+      'cover_image_url',
+      'is_public',
+      'onsite_payement',
+      'hashtags',
+      'hashtags_list',
+      'likes_count',
+      'liked',
+      'created_at',
+      'updated_at',
+    ]
+    read_only_fields = ['id', 'organizer', 'created_at', 'updated_at']
+    
+  @extend_schema_field(serializers.IntegerField())
+  def get_likes_count(self, obj):
+    return obj.likes.all().count()
+  
+  @extend_schema_field(serializers.BooleanField())
+  def get_liked(self, obj):
+    request = self.context.get('request')
+    return obj.is_liked(request.user)
+  
+  def validate_hashtags_list(self, value):
+    if not all(isinstance(name, str) and name.strip() for name in value):
+      raise serializers.ValidationError("Each hashtag must be a non-empty string.")
+    return value
+
+  def create(self, validated_data):
+    request = self.context.get('request')
+    category_objs = validated_data.pop('category', [])
+    hashtag_names = validated_data.pop('hashtags_list', [])
+    
+    event = Event.objects.create(
+      organizer=request.user,
+      **validated_data
     )
-    organizer = UserWithOrganizationProfileDocSerializer(read_only=True)
-    #TODO: pay_onsite
+    
+    event.category.set(category_objs)
+    hashtags = []
+    for name in hashtag_names:
+      hashtag, _ = Hashtag.objects.get_or_create(name=name)
+      hashtags.append(hashtag)
+    event.hashtags.set(hashtags)
 
-    class Meta:
-        model = Event
-        fields = [
-            'id',
-            'organizer',
-            'category',
-            'title',
-            'description',
-            'start_time',
-            'end_time',
-            'start_date',
-            'end_date',
-            'location',
-            'latitude',
-            'longitude',
-            'cover_image_url',
-            'is_public',
-            'created_at',
-            'updated_at',
-        ]
-        read_only_fields = ['id', 'organizer', 'created_at', 'updated_at']
+    Community.objects.create(
+      event=event,
+      name=event.title,
+      description=event.description
+    )
 
-    def create(self, validated_data):
-        request = self.context.get('request')
-        category_objs = validated_data.pop('category', [])
-        
-        event = Event.objects.create(
-            organizer=request.user,
-            **validated_data
-        )
-        
-        event.category.set(category_objs)
+    return event
 
-        Community.objects.create(
-            event=event,
-            name=event.title,
-            description=event.description
-        )
+  def update(self, instance, validated_data):
+    category_objs = validated_data.pop('category', None)
+    hashtag_names = validated_data.pop('hashtags_list', None)
 
-        return event
+    for attr, value in validated_data.items():
+      setattr(instance, attr, value)
+    instance.save()
 
-    def update(self, instance, validated_data):
-        category_objs = validated_data.pop('category', None)
+    if category_objs is not None:
+      instance.category.set(category_objs)
+      
+    if hashtag_names is not None:
+      hashtags = []
+      for name in hashtag_names:
+        hashtag, _ = Hashtag.objects.get_or_create(name=name)
+        hashtags.append(hashtag)
+      instance.hashtags.set(hashtags)
 
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
-        instance.save()
-
-        if category_objs is not None:
-            instance.category.set(category_objs)
-
-        return instance
+    return instance

@@ -5,7 +5,8 @@ from apps.event.models import Ticket
 class Payment(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     ticket = models.ForeignKey(Ticket, related_name='payments', on_delete=models.CASCADE) 
-    tx_ref = models.CharField(max_length=255, unique=True)
+    tx_ref = models.CharField(max_length=255, unique=True, null=True, blank=True)
+    method = models.CharField(max_length=20,choices=[('online','ONLINE'),('onsite','ONSITE')], default='online')
     currency = models.CharField(max_length=10,default="ETB")
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     payment_title = models.CharField(max_length=255,blank=True,null=True)
