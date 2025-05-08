@@ -116,7 +116,7 @@ class OrganizationViewSet(viewsets.ModelViewSet):
     events = Event.objects.filter(organizer=self.request.user)
     paginator = ResponsePagination()
     paginated_events = paginator.paginate_queryset(events, request)
-    serialized_events = EventSerializer(paginated_events, many=True)
+    serialized_events = EventSerializer(paginated_events, many=True,context={'request':request})
     
     return paginator.get_paginated_response(  
       serialized_events.data
@@ -133,7 +133,7 @@ class OrganizationViewSet(viewsets.ModelViewSet):
     
     paginator = ResponsePagination()
     paginated_events = paginator.paginate_queryset(events, request)
-    serialized_events = EventSerializer(paginated_events, many=True)
+    serialized_events = EventSerializer(paginated_events, many=True, context={'request':request})
     
     return paginator.get_paginated_response(  
       serialized_events.data
