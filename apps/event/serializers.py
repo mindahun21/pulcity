@@ -46,6 +46,12 @@ class EventSerializer(serializers.ModelSerializer):
   likes_count = serializers.SerializerMethodField(help_text="Number of likes (integer)")
   liked = serializers.SerializerMethodField(help_text="Whether the user liked the event (boolean)")
 
+  cover_image_url = serializers.ListField(
+      child=serializers.URLField(), 
+      allow_empty=True,
+      required=False,
+      help_text="List of cover image URLs"
+  )
   class Meta:
     model = Event
     fields = [
@@ -91,6 +97,7 @@ class EventSerializer(serializers.ModelSerializer):
     request = self.context.get('request')
     category_objs = validated_data.pop('category', [])
     hashtag_names = validated_data.pop('hashtags_list', [])
+    cover_image_urls = validated_data.pop('cover_image_url', [])
     
     event = Event.objects.create(
       organizer=request.user,
@@ -103,6 +110,9 @@ class EventSerializer(serializers.ModelSerializer):
       hashtag, _ = Hashtag.objects.get_or_create(name=name)
       hashtags.append(hashtag)
     event.hashtags.set(hashtags)
+    
+    event.cover_image_url = cover_image_urls
+    event.save()
 
     Community.objects.create(
       event=event,
@@ -115,6 +125,7 @@ class EventSerializer(serializers.ModelSerializer):
   def update(self, instance, validated_data):
     category_objs = validated_data.pop('category', None)
     hashtag_names = validated_data.pop('hashtags_list', None)
+    cover_image_urls = validated_data.pop('cover_image_url', None)
 
     for attr, value in validated_data.items():
       setattr(instance, attr, value)
@@ -129,5 +140,9 @@ class EventSerializer(serializers.ModelSerializer):
         hashtag, _ = Hashtag.objects.get_or_create(name=name)
         hashtags.append(hashtag)
       instance.hashtags.set(hashtags)
+    
+    if cover_image_urls is not None:
+      instance.cover_image_url = cover_image_urls
+      instance.save()
 
     return instance

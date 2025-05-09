@@ -13,6 +13,7 @@ from apps.event.models import Event, Category
 from apps.event.serializers import EventSerializer, CategorySerializer
 from drf_spectacular.utils import extend_schema, OpenApiResponse, inline_serializer
 from ..serializers import UserWithAnyProfileDocSerializer
+from commons.permisions import IsOrganization
 
 
 @extend_schema(tags=["Organization Management"])
@@ -23,6 +24,11 @@ class OrganizationViewSet(viewsets.ModelViewSet):
   
   def get_queryset(self):
     return CustomUser.objects.filter(role='organization')
+  
+  def get_permissions(self):
+    if self.action in ['org_followers']:
+      return [permissions.IsAuthenticated(), IsOrganization()]
+    return [permissions.IsAuthenticated()]
   
   @extend_schema(
     request=None, 
@@ -79,6 +85,7 @@ class OrganizationViewSet(viewsets.ModelViewSet):
       return Response({"detail": "Already not followed"}, status=status.HTTP_400_BAD_REQUEST)
     
   @extend_schema(
+      description="Paginated Followers for organization specified by id",
       request=None,
       responses={
           200: OpenApiResponse(
@@ -99,9 +106,39 @@ class OrganizationViewSet(viewsets.ModelViewSet):
   def followers(self, request,id=None):
     paginator = ResponsePagination()
     org = self.get_object()
-    followers = org.followers.all()
+    followers = org.followers.all().order_by('-created_at')
     paginated_followers = paginator.paginate_queryset(followers, request)
-    serialized_followers = UserSerializer([f.follower for f in paginated_followers], many=True)
+    serialized_followers = UserSerializer([f.follower for f in paginated_followers], many=True,context={'request': request})
+    
+    return paginator.get_paginated_response(
+      serialized_followers.data
+    )
+    
+  @extend_schema(
+    description="Paginated Followers for currently authenticated organization",
+    request=None,
+    responses={
+        200: OpenApiResponse(
+            inline_serializer(
+                name="PaginatedFollowersResponse",
+                fields={
+                    "count": serializers.IntegerField(),
+                    "next": serializers.URLField(allow_null=True),
+                    "previous": serializers.URLField(allow_null=True),
+                    "results": UserWithAnyProfileDocSerializer(many=True),
+                },
+            ),
+            description="A paginated list of followers",
+        ),
+    },
+  )
+  @action(detail=False,methods=['get'], url_path='me/followers')
+  def org_followers(self, request,id=None):
+    paginator = ResponsePagination()
+    org = request.user
+    followers = org.followers.all().order_by('-created_at')
+    paginated_followers = paginator.paginate_queryset(followers, request)
+    serialized_followers = UserSerializer([f.follower for f in paginated_followers], many=True,context={'request': request})
     
     return paginator.get_paginated_response(
       serialized_followers.data

@@ -1,7 +1,7 @@
 from django.db import models
 from apps.user.models import CustomUser
 from django.core.validators import MinValueValidator, MaxValueValidator
-
+from django.contrib.postgres.fields import ArrayField
 
 class Category(models.Model):
     organizer = models.ForeignKey(CustomUser, related_name='categories', on_delete=models.SET_NULL, null=True, blank=True)
@@ -45,7 +45,11 @@ class Event(models.Model):
           MaxValueValidator(180)
       ]
   )
-  cover_image_url = models.URLField(blank=True, null=True)
+  cover_image_url = ArrayField(
+      models.URLField(),
+      blank=True,
+      default=list
+  ) 
   is_public = models.BooleanField(default=True)
   onsite_payement = models.BooleanField(default=False)
   

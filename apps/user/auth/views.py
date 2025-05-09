@@ -55,7 +55,7 @@ class RegisterView(APIView):
           user = serializer.save()
           user.is_active = False
           user.save()
-          serialized_user = UserSerializer(user).data
+          serialized_user = UserSerializer(user, context={'request': request}).data
           send_verification_email.delay(user_id=user.id, purpose="Email Verification OTP")
 
           return Response({"message": "User registered. Please verify your email.","user":serialized_user}, status=status.HTTP_201_CREATED)
@@ -94,7 +94,7 @@ class OrganizationRegisterView(APIView):
         if serializer.is_valid():
             user = serializer.save()
             user.save()
-            serialized_user = UserSerializer(user).data
+            serialized_user = UserSerializer(user,context={'request': request}).data
 
             send_verification_email.delay(user_id=user.id, purpose="Email Verification OTP")
 
@@ -177,7 +177,7 @@ class VerifyEmailView(APIView):
             otp_instance.delete()
             tokens = get_tokens_for_user(user)
 
-            serialized_user = UserSerializer(user).data
+            serialized_user = UserSerializer(user,context={'request': request}).data
             return Response({
                 'message': 'Email successfully verified.',
                 'tokens': tokens,
@@ -308,7 +308,7 @@ class LoginView(APIView):
                 if not user.is_active:
                     return Response({"error": "Please verify your email."}, status=status.HTTP_403_FORBIDDEN)
                 tokens = get_tokens_for_user(user)
-                serialized_user = UserSerializer(user).data
+                serialized_user = UserSerializer(user,context={'request': request}).data
                 return Response({"tokens": tokens, 'user':serialized_user}, status=status.HTTP_200_OK)
             return Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

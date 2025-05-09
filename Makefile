@@ -25,3 +25,7 @@ celery:
 .PHONY: dbshell
 dbshell:
 	python3 manage.py dbshell
+
+.	PHONY: apitest
+apitest:
+	python3 manage.py test

@@ -9,9 +9,19 @@ class ProfileSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class OrganizationProfileSerializer(serializers.ModelSerializer):
+    is_following = serializers.SerializerMethodField()
+
     class Meta:
         model = OrganizationProfile
         fields = '__all__'
+        extra_fields = ['is_following'] 
+        
+    def get_is_following(self, obj):
+        request = self.context.get('request')
+        user = request.user if request else None
+        if user and user.is_authenticated:
+            return user.is_following(obj.user)
+        return False
 
 class UserSerializer(serializers.ModelSerializer):
     profile = serializers.SerializerMethodField()
@@ -25,7 +35,7 @@ class UserSerializer(serializers.ModelSerializer):
       if profile is None:
           return None
       if obj.role == 'organization':
-          return OrganizationProfileSerializer(profile).data
+          return OrganizationProfileSerializer(profile, context=self.context).data
       return ProfileSerializer(profile).data
 
 

@@ -31,7 +31,7 @@ class UserViewSet(viewsets.ModelViewSet):
     paginator = ResponsePagination()
     followings = request.user.following.all()
     paginated_followings = paginator.paginate_queryset(followings, request)
-    serialized_followings = UserSerializer([f.followed for f in paginated_followings], many=True)
+    serialized_followings = UserSerializer([f.followed for f in paginated_followings], many=True, context={'request': request})
     
     return paginator.get_paginated_response(
       serialized_followings.data
