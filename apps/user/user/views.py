@@ -11,7 +11,8 @@ from apps.user.models import CustomUser
 from ..utils import ResponsePagination
 from drf_spectacular.utils import extend_schema
 from ..serializers import UserWithOrganizationProfileDocSerializer
-
+from apps.event.models import Bookmark
+from apps.event.serializers import EventSerializer
 
 @extend_schema(tags=["user management"])
 class UserViewSet(viewsets.ModelViewSet):
@@ -23,6 +24,7 @@ class UserViewSet(viewsets.ModelViewSet):
     return CustomUser.objects.all()
   
   @extend_schema(
+    request=None,
     description="retreve the list of organizations followed by currently authenticated user.",
     responses=UserWithOrganizationProfileDocSerializer(many=True)
   )
@@ -36,6 +38,25 @@ class UserViewSet(viewsets.ModelViewSet):
     return paginator.get_paginated_response(
       serialized_followings.data
     )
+  
+  @extend_schema(
+    request=None,
+    description="retreve the list of events bookmarked by currently authenticated user.",
+    responses=EventSerializer(many=True)
+  )
+  @action(detail=False,methods=['get'],url_path="me/bookmarks")
+  def bookmarks(self, request):
+    user = request.user
+    bookmarks = Bookmark.objects.filter(user=user)
+    paginator = ResponsePagination()
+    paginated_bookmarks = paginator.paginate_queryset(bookmarks, request)
+    serialized_bookmarks = EventSerializer([bookmark.event for bookmark in paginated_bookmarks], context={'request':request}, many=True)
+    
+    return paginator.get_paginated_response(
+      serialized_bookmarks.data
+    )
+
+
   
   @extend_schema(exclude=True)
   def list(self, request):

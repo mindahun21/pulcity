@@ -6,7 +6,7 @@ from rest_framework import(
 )
 from rest_framework.response import Response
 from apps.event.serializers import EventSerializer
-from apps.event.models import Event, Ticket, UserTicket
+from apps.event.models import Event, Ticket, UserTicket, Bookmark
 from apps.event.ticket.serializers import TicketSerializer
 from commons.permisions import IsOrganization
 from drf_spectacular.utils import extend_schema, OpenApiResponse, inline_serializer
@@ -22,7 +22,7 @@ class EventViewSet(viewsets.ModelViewSet):
     return Event.objects.all()
   
   def get_permissions(self):
-    if self.action in ['list', 'retrieve', 'user_tickets', 'tickets', 'like']:
+    if self.action in ['list', 'retrieve', 'user_tickets', 'tickets', 'like','bookmark']:
         return [permissions.IsAuthenticated()]
     return [permissions.IsAuthenticated(), IsOrganization()]
   
@@ -87,4 +87,34 @@ class EventViewSet(viewsets.ModelViewSet):
       event.likes.add(user)
       return Response({'detail':"event Liked"},status=status.HTTP_200_OK)
     
+  @extend_schema(
+    description="Toggle bookmark status of the event specified by the parameter id for authenticated user.",
+    request=None,
+    responses={
+      200:OpenApiResponse(
+        inline_serializer(
+          name="BookmarkResponse",
+          fields={"detail":serializers.CharField(),}
+        )
+      ),
+      201:OpenApiResponse(
+        inline_serializer(
+          name="BookmarkResponse",
+          fields={"detail":serializers.CharField(),}
+        )
+      )
+    }
+  )
+  @action(detail=True, methods=['post'])
+  def bookmark(self, request, id=None):
+    event = self.get_object()
+    user = request.user
     
+    bookmark = Bookmark.objects.filter(user=user, event=event).first()
+    if bookmark:
+      bookmark.delete()
+      return Response({'detail': 'Bookmark removed'}, status=status.HTTP_200_OK)
+    else:
+      Bookmark.objects.create(user=user, event=event)
+      return Response({'detail':'Bookmark added'}, status=status.HTTP_201_CREATED)
+

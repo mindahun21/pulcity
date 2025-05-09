@@ -9,6 +9,81 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from django.test import TestCase
 from django.core.exceptions import ValidationError
 
+
+class EventModelTest(TestCase):
+    def setUp(self):
+        # Create users
+        self.user = CustomUser.objects.create_user(
+            email="user@example.com", password="testpass123", username="user1", role="user"
+        )
+        self.org_user = CustomUser.objects.create_user(
+            email="org@example.com", password="testpass123", username="org1", role="organization"
+        )
+
+        # Create categories and hashtags
+        self.category = Category.objects.create(name="Music", organizer=self.org_user)
+        self.hashtag = Hashtag.objects.create(name="fun")
+
+        # Create an event
+        self.event = Event.objects.create(
+            organizer=self.org_user,
+            title="Concert",
+            description="Live concert",
+            start_time=timezone.now() + timedelta(days=1),
+            end_time=timezone.now() + timedelta(days=1, hours=2),
+            start_date=timezone.now() + timedelta(days=1),
+            end_date=timezone.now() + timedelta(days=1),
+            location="Addis Ababa"
+        )
+        self.event.category.add(self.category)
+        self.event.hashtags.add(self.hashtag)
+
+    def test_event_str_method(self):
+        """Test the __str__ method of the Event model."""
+        self.assertEqual(str(self.event), "Concert")
+
+    def test_is_liked_method_user_likes_event(self):
+        """Test that the is_liked method returns True if the user likes the event."""
+        # Like the event by adding the user to the likes
+        self.event.likes.add(self.user)
+        self.assertTrue(self.event.is_liked(self.user))
+
+    def test_is_liked_method_user_does_not_like_event(self):
+        """Test that the is_liked method returns False if the user does not like the event."""
+        self.assertFalse(self.event.is_liked(self.user))
+
+    def test_latitude_validator_valid(self):
+        """Test that valid latitude values are accepted."""
+        self.event.latitude = 45.0
+        try:
+            self.event.full_clean()  
+        except ValidationError:
+            self.fail("Event latitude validation failed, even though the value is valid.")
+
+    def test_latitude_validator_invalid(self):
+        """Test that invalid latitude values raise a validation error."""
+        self.event.latitude = 100.0  # Invalid latitude (> 90)
+        with self.assertRaises(ValidationError):
+            self.event.full_clean()
+
+    def test_longitude_validator_valid(self):
+        """Test that valid longitude values are accepted."""
+        self.event.longitude = 45.0
+        try:
+            self.event.full_clean()  
+        except ValidationError:
+            self.fail("Event longitude validation failed, even though the value is valid.")
+
+    def test_longitude_validator_invalid(self):
+        """Test that invalid longitude values raise a validation error."""
+        self.event.longitude = 200.0  # Invalid longitude (> 180)
+        with self.assertRaises(ValidationError):
+            self.event.full_clean()
+
+    def test_cover_image_url_default_empty(self):
+        """Test that cover_image_url defaults to an empty list."""
+        self.assertEqual(self.event.cover_image_url, [])
+
 class EventViewSetTest(APITestCase):
     def setUp(self):
         self.user = CustomUser.objects.create_user(email="user@example.com", password="testpass123", role="user", is_verified=True, username="user1")
@@ -157,77 +232,3 @@ class EventViewSetTest(APITestCase):
         response = self.user_client.delete(self.event_url)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-
-class EventModelTest(TestCase):
-    def setUp(self):
-        # Create users
-        self.user = CustomUser.objects.create_user(
-            email="user@example.com", password="testpass123", username="user1", role="user"
-        )
-        self.org_user = CustomUser.objects.create_user(
-            email="org@example.com", password="testpass123", username="org1", role="organization"
-        )
-
-        # Create categories and hashtags
-        self.category = Category.objects.create(name="Music", organizer=self.org_user)
-        self.hashtag = Hashtag.objects.create(name="fun")
-
-        # Create an event
-        self.event = Event.objects.create(
-            organizer=self.org_user,
-            title="Concert",
-            description="Live concert",
-            start_time=timezone.now() + timedelta(days=1),
-            end_time=timezone.now() + timedelta(days=1, hours=2),
-            start_date=timezone.now() + timedelta(days=1),
-            end_date=timezone.now() + timedelta(days=1),
-            location="Addis Ababa"
-        )
-        self.event.category.add(self.category)
-        self.event.hashtags.add(self.hashtag)
-
-    def test_event_str_method(self):
-        """Test the __str__ method of the Event model."""
-        self.assertEqual(str(self.event), "Concert")
-
-    def test_is_liked_method_user_likes_event(self):
-        """Test that the is_liked method returns True if the user likes the event."""
-        # Like the event by adding the user to the likes
-        self.event.likes.add(self.user)
-        self.assertTrue(self.event.is_liked(self.user))
-
-    def test_is_liked_method_user_does_not_like_event(self):
-        """Test that the is_liked method returns False if the user does not like the event."""
-        self.assertFalse(self.event.is_liked(self.user))
-
-    def test_latitude_validator_valid(self):
-        """Test that valid latitude values are accepted."""
-        self.event.latitude = 45.0
-        try:
-            self.event.full_clean()  
-        except ValidationError:
-            self.fail("Event latitude validation failed, even though the value is valid.")
-
-    def test_latitude_validator_invalid(self):
-        """Test that invalid latitude values raise a validation error."""
-        self.event.latitude = 100.0  # Invalid latitude (> 90)
-        with self.assertRaises(ValidationError):
-            self.event.full_clean()
-
-    def test_longitude_validator_valid(self):
-        """Test that valid longitude values are accepted."""
-        self.event.longitude = 45.0
-        try:
-            self.event.full_clean()  
-        except ValidationError:
-            self.fail("Event longitude validation failed, even though the value is valid.")
-
-    def test_longitude_validator_invalid(self):
-        """Test that invalid longitude values raise a validation error."""
-        self.event.longitude = 200.0  # Invalid longitude (> 180)
-        with self.assertRaises(ValidationError):
-            self.event.full_clean()
-
-    def test_cover_image_url_default_empty(self):
-        """Test that cover_image_url defaults to an empty list."""
-        self.assertEqual(self.event.cover_image_url, [])

@@ -85,5 +85,13 @@ class UserTicket(models.Model):
   ticket = models.ForeignKey(Ticket, on_delete=models.CASCADE, related_name="users_purchased")
   purchase_date = models.DateTimeField(auto_now_add=True)
   
+  class Meta:
+    ordering =['-purchase_date']
   
+class Bookmark(models.Model):
+  user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='bookmarks')
+  event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name='bookmarks')
+  created_at = models.DateTimeField(auto_now_add=True)
   
+  class Meta:
+    ordering = ['-created_at']
