@@ -10,6 +10,8 @@ SECRET_KEY = config("SECRET_KEY")
 DEBUG = config('DEBUG',cast=bool)
 ALLOWED_HOSTS = config("ALLOWED_HOSTS").split(",")
 ALLOWED_REDIRECT_SCHEMES = ['http', 'https', 'pulcity']
+ENVIRONMENT = config("DJANGO_ENV", default="production")
+
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -28,7 +30,6 @@ INSTALLED_APPS = [
     'django_cleanup.apps.CleanupConfig',
     'drf_spectacular',
     'drf_spectacular_sidecar',
-    'django_extensions',
     
     # apps
     'apps.user',
@@ -37,6 +38,10 @@ INSTALLED_APPS = [
     'apps.community',
     'apps.notification',
 ]
+
+
+if ENVIRONMENT == 'development':
+    INSTALLED_APPS += ['django_extensions']
 
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
