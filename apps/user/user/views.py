@@ -25,7 +25,7 @@ class UserViewSet(viewsets.ModelViewSet):
   
   @extend_schema(
     request=None,
-    description="retreve the list of organizations followed by currently authenticated user.",
+    description="retrieve the list of organizations followed by currently authenticated user.",
     responses=UserWithOrganizationProfileDocSerializer(many=True)
   )
   @action(detail=False,methods=['get'],url_path='me/following')
@@ -41,7 +41,7 @@ class UserViewSet(viewsets.ModelViewSet):
   
   @extend_schema(
     request=None,
-    description="retreve the list of events bookmarked by currently authenticated user.",
+    description="retrieve the list of events bookmarked by currently authenticated user.",
     responses=EventSerializer(many=True)
   )
   @action(detail=False,methods=['get'],url_path="me/bookmarks")

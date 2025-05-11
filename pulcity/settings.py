@@ -28,6 +28,7 @@ INSTALLED_APPS = [
     'django_cleanup.apps.CleanupConfig',
     'drf_spectacular',
     'drf_spectacular_sidecar',
+    'django_extensions',
     
     # apps
     'apps.user',

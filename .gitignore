@@ -73,6 +73,7 @@ pytest_cache/
 *.cover
 nosetests.xml
 coverage.xml
+*management/
 *.mo
 
 # System files
@@ -96,3 +97,4 @@ Desktop.ini
 *.zip
 
 deploy.sh
+schema.*
