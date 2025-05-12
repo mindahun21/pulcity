@@ -96,9 +96,11 @@ class EventSerializer(serializers.ModelSerializer):
     request = self.context.get('request')
     return obj.is_liked(request.user)
   
+  @extend_schema_field(serializers.IntegerField())
   def get_bookmarks_count(self, obj):
     return Bookmark.objects.filter(event=obj).count()  
   
+  @extend_schema_field(serializers.BooleanField())
   def get_bookmarked(self, obj):
     request = self.context.get('request')
     return Bookmark.objects.filter(user=request.user, event=obj).exists()
