@@ -168,6 +168,11 @@ class ChapaWebhookView(APIView):
                 payment.save()
                 UserTicket.objects.get_or_create(user=payment.user, ticket=payment.ticket)
                 logger.info(f"Payment marked as success and UserTicket created for user={payment.user.id}")
+                
+                if hasattr(payment.ticket.event, 'community'):
+                  community = payment.ticket.event.community
+                  UserCommunity.objects.get_or_create(user=payment.user, community=community)
+                  logger.info(f"UserCommunity created for user={payment.user.id} and community={community.id}")
         
         else:
             logger.info(f"Ignoring non-successful payment event: {event}")

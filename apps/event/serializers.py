@@ -1,8 +1,12 @@
+import logging
 from rest_framework import serializers
 from .models import Category, Event, Hashtag
 from apps.community.models import Community
 from apps.user.serializers import UserWithOrganizationProfileDocSerializer
 from drf_spectacular.utils import extend_schema_field
+
+
+logger = logging.getLogger("django")
 class CategorySerializer(serializers.ModelSerializer):
   class Meta:
     model = Category
@@ -119,6 +123,7 @@ class EventSerializer(serializers.ModelSerializer):
       name=event.title,
       description=event.description
     )
+    logger.info(f"Community created for event '{event.title}' (ID: {event.id})")
 
     return event
 
