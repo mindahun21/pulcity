@@ -1,6 +1,6 @@
 import logging
 from rest_framework import serializers
-from .models import Category, Event, Hashtag
+from .models import Category, Event, Hashtag, Bookmark
 from apps.community.models import Community
 from apps.user.serializers import UserWithOrganizationProfileDocSerializer
 from drf_spectacular.utils import extend_schema_field
@@ -49,6 +49,8 @@ class EventSerializer(serializers.ModelSerializer):
   hashtags = HashtagSerializer(many=True, read_only=True)
   likes_count = serializers.SerializerMethodField(help_text="Number of likes (integer)")
   liked = serializers.SerializerMethodField(help_text="Whether the user liked the event (boolean)")
+  bookmarks_count = serializers.SerializerMethodField(help_text="Number of bookmarks (integer)")
+  bookmarked = serializers.SerializerMethodField(help_text="Whether the user bookmarked the event (boolean)")
 
   cover_image_url = serializers.ListField(
       child=serializers.URLField(), 
@@ -78,6 +80,8 @@ class EventSerializer(serializers.ModelSerializer):
       'hashtags_list',
       'likes_count',
       'liked',
+      'bookmarks_count',
+      'bookmarked',
       'created_at',
       'updated_at',
     ]
@@ -91,6 +95,14 @@ class EventSerializer(serializers.ModelSerializer):
   def get_liked(self, obj):
     request = self.context.get('request')
     return obj.is_liked(request.user)
+  
+  def get_bookmarks_count(self, obj):
+    return Bookmark.objects.filter(event=obj).count()  
+  
+  def get_bookmarked(self, obj):
+    request = self.context.get('request')
+    return Bookmark.objects.filter(user=request.user, event=obj).exists()
+
   
   def validate_hashtags_list(self, value):
     if not all(isinstance(name, str) and name.strip() for name in value):
