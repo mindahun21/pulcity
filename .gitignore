@@ -62,7 +62,7 @@ node_modules/
 # Test & temporary files
 test/
 *.rest
-tasks.md
+*tasks.md
 test.rest
 test_output/
 coverage/

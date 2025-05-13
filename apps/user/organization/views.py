@@ -203,10 +203,6 @@ class OrganizationViewSet(viewsets.ModelViewSet):
       """Hidden from schema."""
       return Response({'detail': 'Method not allowed'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
-  @extend_schema(exclude=True)
-  def retrieve(self, request, id=None):
-      """Hidden from schema."""
-      return Response({'detail': 'Method not allowed'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
   @extend_schema(exclude=True)
   def update(self, request, id=None):
