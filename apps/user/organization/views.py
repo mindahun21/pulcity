@@ -12,7 +12,7 @@ from ..utils import ResponsePagination
 from apps.event.models import Event, Category
 from apps.event.serializers import EventSerializer, CategorySerializer
 from drf_spectacular.utils import extend_schema, OpenApiResponse, inline_serializer
-from ..serializers import UserWithAnyProfileDocSerializer
+from ..serializers import UserWithAnyProfileDocSerializer, UserWithOrganizationProfileDocSerializer
 from commons.permisions import IsOrganization
 
 
@@ -202,8 +202,11 @@ class OrganizationViewSet(viewsets.ModelViewSet):
   def create(self, request):
       """Hidden from schema."""
       return Response({'detail': 'Method not allowed'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
-
-
+  
+  @extend_schema(responses=UserWithOrganizationProfileDocSerializer())
+  def retrieve(self, request, *args, **kwargs):
+    return super().retrieve(request, *args, **kwargs)
+      
   @extend_schema(exclude=True)
   def update(self, request, id=None):
       """Hidden from schema."""

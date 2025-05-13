@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from .models import Profile, OrganizationProfile, CustomUser
-
+from drf_spectacular.utils import extend_schema_field
 
 
 class ProfileSerializer(serializers.ModelSerializer):
@@ -16,6 +16,7 @@ class OrganizationProfileSerializer(serializers.ModelSerializer):
         fields = '__all__'
         extra_fields = ['is_following'] 
         
+    @extend_schema_field(serializers.BooleanField())
     def get_is_following(self, obj):
         request = self.context.get('request')
         user = request.user if request else None
