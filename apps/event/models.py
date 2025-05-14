@@ -67,7 +67,7 @@ class Event(models.Model):
     if user.is_authenticated:
         return self.likes.filter(id=user.id).exists()
     return False
-    
+  
 class Ticket(models.Model):
     event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name='tickets')
     name = models.CharField(max_length=255)
@@ -95,3 +95,18 @@ class Bookmark(models.Model):
   
   class Meta:
     ordering = ['-created_at']
+    
+class Rating(models.Model):
+  event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name='ratings')
+  user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='ratings')
+  value = models.FloatField(
+      validators=[MinValueValidator(0.0), MaxValueValidator(5.0)],
+      help_text="Rating must be between 0.0 and 5.0"
+  )
+  comment = models.TextField(blank=True,null=True, help_text="Optional comment about the event")
+  created_at = models.DateTimeField(auto_now_add=True)
+  updated_at = models.DateTimeField(auto_now=True)
+  
+
+  def __str__(self):
+      return f"{self.event.title} - {self.value}/5"

@@ -1,9 +1,11 @@
 import logging
 from rest_framework import serializers
-from .models import Category, Event, Hashtag, Bookmark
+from .models import Category, Event, Hashtag, Bookmark, Rating
 from apps.community.models import Community
 from apps.user.serializers import UserWithOrganizationProfileDocSerializer
 from drf_spectacular.utils import extend_schema_field
+from django.db.models import Avg
+from apps.event.rating.serializers import RatingSerializer
 
 
 logger = logging.getLogger("django")
@@ -46,18 +48,25 @@ class EventSerializer(serializers.ModelSerializer):
     write_only=True,
     help_text="List of hashtag names"
   )
-  hashtags = HashtagSerializer(many=True, read_only=True)
-  likes_count = serializers.SerializerMethodField(help_text="Number of likes (integer)")
-  liked = serializers.SerializerMethodField(help_text="Whether the user liked the event (boolean)")
-  bookmarks_count = serializers.SerializerMethodField(help_text="Number of bookmarks (integer)")
-  bookmarked = serializers.SerializerMethodField(help_text="Whether the user bookmarked the event (boolean)")
-
   cover_image_url = serializers.ListField(
       child=serializers.URLField(), 
       allow_empty=True,
       required=False,
       help_text="List of cover image URLs"
   )
+  
+  hashtags = HashtagSerializer(many=True, read_only=True)
+  likes_count = serializers.SerializerMethodField(help_text="Number of likes (integer)")
+  liked = serializers.SerializerMethodField(help_text="Whether the user liked the event (boolean)")
+  bookmarks_count = serializers.SerializerMethodField(help_text="Number of bookmarks (integer)")
+  bookmarked = serializers.SerializerMethodField(help_text="Whether the user bookmarked the event (boolean)")
+
+  rated = serializers.SerializerMethodField(help_text="Weather the user rated the event (boolean)")
+  rating_count = serializers.SerializerMethodField(help_text='Retrieve the count of ratings')
+  average_rating = serializers.SerializerMethodField()
+  rating = serializers.SerializerMethodField()
+  
+  
   class Meta:
     model = Event
     fields = [
@@ -80,7 +89,11 @@ class EventSerializer(serializers.ModelSerializer):
       'hashtags_list',
       'likes_count',
       'liked',
+      'rated',
+      'average_rating',
+      'rating_count',
       'bookmarks_count',
+      'rating',
       'bookmarked',
       'created_at',
       'updated_at',
@@ -104,6 +117,29 @@ class EventSerializer(serializers.ModelSerializer):
   def get_bookmarked(self, obj):
     request = self.context.get('request')
     return Bookmark.objects.filter(user=request.user, event=obj).exists()
+  
+  @extend_schema_field(serializers.BooleanField())
+  def get_rated(self, obj):
+    request = self.context.get('request')
+    return Rating.objects.filter(user=request.user, event=obj).exists()
+  
+  @extend_schema_field(serializers.IntegerField())
+  def get_rating_count(self, obj):
+    return Rating.objects.filter(event=obj).count()
+  
+  @extend_schema_field(serializers.FloatField(allow_null=True))
+  def get_average_rating(self, obj):
+    result = Rating.objects.filter(event=obj).aggregate(avg_rating=Avg('value'))
+    return result['avg_rating']
+  
+  @extend_schema_field(RatingSerializer)
+  def get_rating(self, obj):
+      request = self.context.get('request')
+      try:
+          rating = Rating.objects.get(event=obj, user=request.user)
+          return RatingSerializer(rating, context=self.context).data
+      except Rating.DoesNotExist:
+          return None
 
   
   def validate_hashtags_list(self, value):
