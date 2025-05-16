@@ -6,8 +6,10 @@ from rest_framework import(
 )
 from rest_framework.exceptions import PermissionDenied
 from apps.event.models import Ticket, UserTicket
-from apps.payment.models import Payment
-from apps.event.ticket.serializers import TicketSerializer, OnsitePaymentserializer
+from apps.community.models import UserCommunity
+from apps.payment.models import Payment, PaymentItem
+from apps.payment.serializers import OnsitePaymentserializer
+from apps.event.ticket.serializers import TicketSerializer
 from commons.permisions import IsOrganization
 from drf_spectacular.utils import extend_schema,OpenApiResponse,inline_serializer
 from rest_framework.decorators import action
@@ -58,36 +60,42 @@ class TicketViewSet(viewsets.ModelViewSet):
       )
     }
   )
-  @action(detail=True, methods=['post'], url_path='payment/onsite')
+  @action(detail=False, methods=['post'], url_path='payment/onsite')
   def onsite_payment(self, request, id=None):
     serializer = OnsitePaymentserializer(data=request.data)
     serializer.is_valid(raise_exception=True)
     
     add_to_community = serializer.validated_data['add_to_community']
+    items_data = serializer.validated_data['tickets']
+    ticket_ids = [item['ticket_id'] for item in items_data]
+    tickets = Ticket.objects.filter(id__in=ticket_ids)
+    ticket_map = {t.id: t for t in tickets}
     
-    ticket = self.get_object()
-    event = ticket.event
-    if not event.onsite_payement:
-      return Response({"detail":"This event didn't accept onsite payment"}, status=status.HTTP_400_BAD_REQUEST)
+    total_amount = sum(ticket_map[item['ticket_id']].price * item['quantity'] for item in items_data)
+    event = ticket_map[items_data[0]['ticket_id']].event
     
-    payment, paymentCreated = Payment.objects.get_or_create(
-      user=request.user,
-      ticket=ticket,
-      currency="ETB",
-      amount=ticket.price,
-      payment_title="Event Payment",
-      description="Payment for Pulcity event ticket",
-      method='onsite',
-      status='success',
+    
+    payment = Payment.objects.create(
+        user=request.user,
+        currency="ETB",
+        amount=total_amount,
+        payment_title="Event Payment",
+        description="Payment for Pulcity event ticket",
+        status='success'
     )
-    UserTicket.objects.get_or_create(user=payment.user, ticket=payment.ticket)
+    for item in items_data:
+      paymentItem = PaymentItem.objects.create(
+          payment=payment,
+          ticket=ticket_map[item['ticket_id']],
+          quantity=item['quantity'],
+          unit_price=ticket_map[item['ticket_id']].price
+      )
+      for _ in range(item['quantity']):
+        UserTicket.objects.create(user=payment.user, ticket=paymentItem.ticket)
     
-    if add_to_community and hasattr(payment.ticket.event, 'community'):
-      community = event.community 
-      UserCommunity.objects.get_or_create(user=request.user, community=community)
-    
-    if not paymentCreated:
-      return Response({"detail":"Payment already done before."}, status=status.HTTP_400_BAD_REQUEST)
+    if hasattr(event, 'community') and add_to_community:
+      UserCommunity.objects.get_or_create(user=payment.user, community=event.community)
+
     
     return Response({"detail":"Payment successful."}, status=status.HTTP_200_OK)
 

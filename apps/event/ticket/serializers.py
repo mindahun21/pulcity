@@ -44,6 +44,3 @@ class TicketSerializer(serializers.ModelSerializer):
         return Ticket.objects.create(**validated_data)
     
 
-class OnsitePaymentserializer(serializers.Serializer):
-  add_to_community = serializers.BooleanField(default=False)
-  

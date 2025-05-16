@@ -1,8 +1,58 @@
 from rest_framework import serializers
+from apps.event.models import Ticket
+
+class TicketItemSerializer(serializers.Serializer):
+    ticket_id = serializers.IntegerField()
+    quantity = serializers.IntegerField(min_value=1)
 
 class PaymentInitiateSerializer(serializers.Serializer):
-  ticket_id = serializers.IntegerField()
+    tickets = TicketItemSerializer(many=True)
+
+    def validate(self, data):
+        items = data['tickets']
+        ticket_ids = [item['ticket_id'] for item in items]
+        tickets = Ticket.objects.filter(id__in=ticket_ids)
+
+        found_ticket_ids = set(tickets.values_list('id', flat=True))
+        missing_ids = [tid for tid in ticket_ids if tid not in found_ticket_ids]
+
+        if missing_ids:
+            raise serializers.ValidationError({
+                'tickets': [f"Ticket(s) not found with ID(s): {', '.join(map(str, missing_ids))}"]
+            })
+
+        # Validate all tickets are from the same event
+        event_ids = set(ticket.event_id for ticket in tickets)
+        if len(event_ids) > 1:
+            raise serializers.ValidationError("All tickets must belong to the same event.")
+        
+        return data
+
   
+class OnsitePaymentserializer(serializers.Serializer):
+  add_to_community = serializers.BooleanField(default=False)
+  tickets = TicketItemSerializer(many=True)
+
+  def validate(self, data):
+      items = data['tickets']
+      ticket_ids = [item['ticket_id'] for item in items]
+      tickets = Ticket.objects.filter(id__in=ticket_ids)
+
+      found_ticket_ids = set(tickets.values_list('id', flat=True))
+      missing_ids = [tid for tid in ticket_ids if tid not in found_ticket_ids]
+
+      if missing_ids:
+          raise serializers.ValidationError({
+              'tickets': [f"Ticket(s) not found with ID(s): {', '.join(map(str, missing_ids))}"]
+          })
+
+      # Validate all tickets are from the same event
+      event_ids = set(ticket.event_id for ticket in tickets)
+      if len(event_ids) > 1:
+          raise serializers.ValidationError("All tickets must belong to the same event.")
+      
+      return data
+
 class PaymentVerifySerializer(serializers.Serializer):
   tx_ref = serializers.CharField(max_length=255)
   

@@ -84,6 +84,7 @@ class UserTicket(models.Model):
   user = models.ForeignKey(CustomUser, on_delete=models.SET_NULL,related_name="tickets", null=True, blank=True)
   ticket = models.ForeignKey(Ticket, on_delete=models.CASCADE, related_name="users_purchased")
   purchase_date = models.DateTimeField(auto_now_add=True)
+  used = models.BooleanField(default=False)
   
   class Meta:
     ordering =['-purchase_date']

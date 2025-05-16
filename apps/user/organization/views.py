@@ -1,3 +1,5 @@
+from django.utils import timezone
+from datetime import timedelta
 from rest_framework import (
   viewsets,
   status,
@@ -6,27 +8,30 @@ from rest_framework import (
 )
 from rest_framework.response import Response
 from rest_framework.decorators import action
-from apps.user.serializers import UserSerializer
+
+from apps.event.models import Event, Category, UserTicket
 from apps.user.models import CustomUser
-from ..utils import ResponsePagination
-from apps.event.models import Event, Category
+from apps.payment.models import Payment 
+
+from apps.user.serializers import UserSerializer
 from apps.event.serializers import EventSerializer, CategorySerializer
-from drf_spectacular.utils import extend_schema, OpenApiResponse, inline_serializer
 from ..serializers import UserWithAnyProfileDocSerializer, UserWithOrganizationProfileDocSerializer
+
+from ..utils import ResponsePagination
+from drf_spectacular.utils import extend_schema, OpenApiResponse, inline_serializer
 from commons.permisions import IsOrganization
 
 
 @extend_schema(tags=["Organization Management"])
 class OrganizationViewSet(viewsets.ModelViewSet):
   serializer_class = UserSerializer
-  permission_classes = [permissions.IsAuthenticated]
   lookup_field ='id'   
   
   def get_queryset(self):
     return CustomUser.objects.filter(role='organization')
   
   def get_permissions(self):
-    if self.action in ['org_followers']:
+    if self.action in ['org_followers','events']:
       return [permissions.IsAuthenticated(), IsOrganization()]
     return [permissions.IsAuthenticated()]
   
@@ -50,7 +55,6 @@ class OrganizationViewSet(viewsets.ModelViewSet):
         return Response({'detail':"Already followed!"},status=status.HTTP_400_BAD_REQUEST)
       request.user.follow(user_to_follow)
       return Response({"detail": "following"},status=status.HTTP_200_OK)
-
 
   @extend_schema(
       request=None, 
@@ -193,6 +197,18 @@ class OrganizationViewSet(viewsets.ModelViewSet):
       serialized_categories.data
     )
     
+  @extend_schema(
+    description="Retrieve dashboard overview analytics for currently authenticated organization",
+  )
+  @action(detail=False, methods=['get'])
+  def analytics(self, request):
+    org = request.user
+    
+    
+  @extend_schema(responses=UserWithOrganizationProfileDocSerializer())
+  def retrieve(self, request, *args, **kwargs):
+    return super().retrieve(request, *args, **kwargs)
+    
   @extend_schema(exclude=True)
   def list(self, request):
       """Hidden from schema."""
@@ -203,9 +219,6 @@ class OrganizationViewSet(viewsets.ModelViewSet):
       """Hidden from schema."""
       return Response({'detail': 'Method not allowed'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
   
-  @extend_schema(responses=UserWithOrganizationProfileDocSerializer())
-  def retrieve(self, request, *args, **kwargs):
-    return super().retrieve(request, *args, **kwargs)
       
   @extend_schema(exclude=True)
   def update(self, request, id=None):
@@ -221,3 +234,59 @@ class OrganizationViewSet(viewsets.ModelViewSet):
   def destroy(self, request, id=None):
       """Hidden from schema."""
       return Response({'detail': 'Method not allowed'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+    
+  def _get_month_date_ranges(self):
+    now = timezone.now()
+    this_month_start = now.replace(day=1)
+    last_month_end = this_month_start - timedelta(days=1)
+    last_month_start = last_month_end.replace(day=1)
+    
+    return this_month_start, last_month_start, last_month_end
+  
+  def _calculate_percentage_change(self, old, new):
+    if old == 0:
+        return 100 if new > 0 else 0
+    return round(((new - old) / old) * 100, 2)
+  
+  def _get_total_events_analytics(self, organizer):
+    this_month_start, last_month_start, _ = self._get_month_date_ranges()
+    recent_events = Event.objects.filter(
+      organizer=organizer,
+      created_at__gte = last_month_start
+    )
+    this_month_events_count = sum(1 for e in recent_events if e.created_at >= this_month_start)
+    last_month_events_count = recent_events.count() - this_month_events_count
+    
+    percentage_change = self._calculate_percentage_change(last_month_events_count,this_month_events_count)
+        
+    total = Event.objects.filter(organizer=organizer).count()
+        
+    return {
+      "total": total,
+      "percentage_change": percentage_change
+    }
+    
+  def _get_total_user_analytics(self, organizer):
+    this_month_start, last_month_start, _ = self._get_month_date_ranges()
+
+    total = UserTicket.objects.filter(ticket_event_organizer = organizer).count()
+    recent_tickets = UserTicket.objects.filter(
+      ticket__event__organizer=organizer,
+      purchase_date__gte=last_month_start
+    )
+    this_month_user_tickets_count = sum(1 for t in recent_tickets if t.purchase_date >= this_month_start)
+    last_month_user_tickets_count = recent_tickets.count() - this_month_user_tickets_count
+
+    
+    percentage_change = self._calculate_percentage_change(last_month_user_tickets_count, this_month_user_tickets_count)
+    return {
+      "total": total,
+      "percentage_change": percentage_change
+    }
+    
+  # def _get_total_revenue_analytics(self, organizer):
+  #   this_month_start, last_month_start, _ = self._get_month_date_ranges()
+  #   total = Payment.objects.filter
+
+    
+    

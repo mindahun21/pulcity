@@ -10,7 +10,7 @@ from django.utils.decorators import method_decorator
 from chapa import Chapa
 from chapa import verify_webhook
 
-from .models import Payment
+from .models import Payment, PaymentItem
 from .serializers import (
   PaymentInitiateSerializer, 
   PaymentVerifySerializer,
@@ -40,26 +40,25 @@ class InitiatePaymentView(APIView):
       serializer = self.serializer_class(data=request.data)
       serializer.is_valid(raise_exception=True)
 
-      ticket_id = serializer.validated_data['ticket_id'] 
+      items_data = serializer.validated_data['tickets']
+      ticket_ids = [item['ticket_id'] for item in items_data]
+      tickets = Ticket.objects.filter(id__in=ticket_ids)
+      ticket_map = {t.id: t for t in tickets}
+      
+      total_amount = sum(ticket_map[item['ticket_id']].price * item['quantity'] for item in items_data)
+      event = ticket_map[items_data[0]['ticket_id']].event
 
       # generate unique tx_ref
-      tx_ref = f"pulcity-{request.user.id}-{ticket_id}-{int(time.time())}{random.randint(1000, 9999)}"
-      
-      try:
-        ticket = Ticket.objects.get(id=ticket_id)
-      except Ticket.DoesNotExist:
-          return Response({"detail": "Ticket not found."}, status=status.HTTP_404_NOT_FOUND)
-        
-      event_id = ticket.event.id
+      tx_ref = f"pulcity-{request.user.id}-{int(time.time())}{random.randint(1000, 9999)}"
       
       data = {
         "tx_ref":tx_ref,
-        "amount":float(ticket.price),
+        "amount":float(total_amount),
         "currency":"ETB",
         "email":request.user.email,
         "first_name":request.user.first_name,
         "last_name":request.user.last_name,
-        "return_url": f"https://mindahun.pro.et/api/v1/payment/return/{event_id}/{tx_ref}",
+        "return_url": f"https://mindahun.pro.et/api/v1/payment/return/{event.id}/{tx_ref}",
         'customization': {
           'title': 'Event Payment',
           'description': 'Payment for Pulcity event ticket',
@@ -71,17 +70,25 @@ class InitiatePaymentView(APIView):
       if response.get("status") != "success":
         return Response({"detail":"Failed to initialize payment","chapa_response":response})
       
-      Payment.objects.create(
+      payment = Payment.objects.create(
           user=request.user,
-          ticket=ticket,
           tx_ref=tx_ref,
           currency="ETB",
-          amount=ticket.price,
+          amount=total_amount,
           payment_title="Event Payment",
           description="Payment for Pulcity event ticket",
           status='pending'
       )
+      
+      for item in items_data:
+        PaymentItem.objects.create(
+            payment=payment,
+            ticket=ticket_map[item['ticket_id']],
+            quantity=item['quantity'],
+            unit_price=ticket_map[item['ticket_id']].price
+        )
       return Response({"detail":response,"tx_ref":tx_ref})
+
 
 
 @extend_schema(tags=["Payment"])
@@ -114,16 +121,21 @@ class VerifyPaymentView(APIView):
     if chapa_data.get('status') != "success":
       return Response(chapa_data, status=status.HTTP_400_BAD_REQUEST)
     
-    payment.status = "success"
-    payment.save()
     
-    UserTicket.objects.get_or_create(user=payment.user, ticket=payment.ticket)
-    if hasattr(payment.ticket.event, 'community'):
-      community = payment.ticket.event.community
-      UserCommunity.objects.get_or_create(user=payment.user, community=community)
+    if payment.status != "success":
+      payment.status = "success"
+      payment.save()
+      for item in payment.items.all():
+        for _ in range(item.quantity):
+            UserTicket.objects.create(user=payment.user, ticket=item.ticket)
+
+        event = item.ticket.event
+        if hasattr(event, 'community'):
+            UserCommunity.objects.get_or_create(user=payment.user, community=event.community)
 
     return Response(chapa_data)
-
+  
+  
 @extend_schema(exclude=True)
 @method_decorator(csrf_exempt, name='dispatch')
 class ChapaWebhookView(APIView):
@@ -166,14 +178,14 @@ class ChapaWebhookView(APIView):
             if payment.status != "success":
                 payment.status = "success"
                 payment.save()
-                UserTicket.objects.get_or_create(user=payment.user, ticket=payment.ticket)
-                logger.info(f"Payment marked as success and UserTicket created for user={payment.user.id}")
-                
-                if hasattr(payment.ticket.event, 'community'):
-                  community = payment.ticket.event.community
-                  UserCommunity.objects.get_or_create(user=payment.user, community=community)
-                  logger.info(f"UserCommunity created for user={payment.user.id} and community={community.id}")
-        
+                for item in payment.items.all():
+                  for _ in range(item.quantity):
+                      UserTicket.objects.create(user=payment.user, ticket=item.ticket)
+
+                  event = item.ticket.event
+                  if hasattr(event, 'community'):
+                      UserCommunity.objects.get_or_create(user=payment.user, community=event.community)
+
         else:
             logger.info(f"Ignoring non-successful payment event: {event}")
 
