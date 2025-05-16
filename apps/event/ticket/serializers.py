@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from apps.event.models import Ticket, Event
+from apps.event.models import Ticket, Event, UserTicket
 from drf_spectacular.utils import extend_schema_field
 
 class TicketSerializer(serializers.ModelSerializer):
@@ -44,3 +44,8 @@ class TicketSerializer(serializers.ModelSerializer):
         return Ticket.objects.create(**validated_data)
     
 
+class UserTicketSerializer(serializers.ModelSerializer):
+  ticket = TicketSerializer()
+  class Meta:
+    model = UserTicket
+    fields = ['id','ticket', 'used', 'purchase_date']

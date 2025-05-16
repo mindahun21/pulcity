@@ -68,6 +68,9 @@ class Event(models.Model):
         return self.likes.filter(id=user.id).exists()
     return False
   
+  def get_avg_rating(self):
+    return self.ratings.aggregate(avg_rating=models.Avg('value'))['avg_rating']
+  
 class Ticket(models.Model):
     event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name='tickets')
     name = models.CharField(max_length=255)

@@ -1,5 +1,10 @@
 from django.utils import timezone
+from django.db.models.functions import TruncMonth
+from django.db.models import Count
+from collections import OrderedDict
+
 from datetime import timedelta
+from django.db.models import Sum, F
 from rest_framework import (
   viewsets,
   status,
@@ -9,9 +14,9 @@ from rest_framework import (
 from rest_framework.response import Response
 from rest_framework.decorators import action
 
-from apps.event.models import Event, Category, UserTicket
+from apps.event.models import Event, Category, UserTicket, Ticket
 from apps.user.models import CustomUser
-from apps.payment.models import Payment 
+from apps.payment.models import Payment , PaymentItem
 
 from apps.user.serializers import UserSerializer
 from apps.event.serializers import EventSerializer, CategorySerializer
@@ -31,7 +36,7 @@ class OrganizationViewSet(viewsets.ModelViewSet):
     return CustomUser.objects.filter(role='organization')
   
   def get_permissions(self):
-    if self.action in ['org_followers','events']:
+    if self.action in ['org_followers','events','analytics']:
       return [permissions.IsAuthenticated(), IsOrganization()]
     return [permissions.IsAuthenticated()]
   
@@ -198,12 +203,54 @@ class OrganizationViewSet(viewsets.ModelViewSet):
     )
     
   @extend_schema(
-    description="Retrieve dashboard overview analytics for currently authenticated organization",
+      description="Retrieve dashboard overview analytics for currently authenticated organization",
+      responses=OpenApiResponse(
+          response=inline_serializer(
+              name="DashboardAnalyticsResponse",
+              fields={
+                  "events": inline_serializer(
+                      name="AnalyticsSummary",
+                      fields={
+                          "total": serializers.IntegerField(),
+                          "percentage_change": serializers.FloatField()
+                      }
+                  ),
+                  "users": inline_serializer(
+                      name="UserAnalyticsSummary",
+                      fields={
+                          "total": serializers.IntegerField(),
+                          "percentage_change": serializers.FloatField()
+                      }
+                  ),
+                  "revenue": inline_serializer(
+                      name="RevenueAnalyticsSummary",
+                      fields={
+                          "total": serializers.FloatField(),
+                          "percentage_change": serializers.FloatField()
+                      }
+                  ),
+                  "event_growth": serializers.DictField(
+                      child=serializers.IntegerField(),
+                      help_text="Events created per month over the last 12 months"
+                  ),
+                  "user_growth": serializers.DictField(
+                      child=serializers.IntegerField(),
+                      help_text="Users (ticket buyers) per month over the last 12 months"
+                  )
+              }
+          )
+      )
   )
   @action(detail=False, methods=['get'])
   def analytics(self, request):
     org = request.user
-    
+    return Response({
+      "events":self._get_total_events_analytics(org),
+      "users": self._get_total_user_analytics(org),
+      "revenue":self._get_total_revenue_analytics(org),
+      "event_growth":self._get_events_last_12_months(org),
+      "user_growth":self._get_user_growth_last_12_months(org)
+    }, status=status.HTTP_200_OK)
     
   @extend_schema(responses=UserWithOrganizationProfileDocSerializer())
   def retrieve(self, request, *args, **kwargs):
@@ -218,7 +265,6 @@ class OrganizationViewSet(viewsets.ModelViewSet):
   def create(self, request):
       """Hidden from schema."""
       return Response({'detail': 'Method not allowed'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
-  
       
   @extend_schema(exclude=True)
   def update(self, request, id=None):
@@ -269,7 +315,7 @@ class OrganizationViewSet(viewsets.ModelViewSet):
   def _get_total_user_analytics(self, organizer):
     this_month_start, last_month_start, _ = self._get_month_date_ranges()
 
-    total = UserTicket.objects.filter(ticket_event_organizer = organizer).count()
+    total = UserTicket.objects.filter(ticket__event__organizer = organizer).count()
     recent_tickets = UserTicket.objects.filter(
       ticket__event__organizer=organizer,
       purchase_date__gte=last_month_start
@@ -284,9 +330,86 @@ class OrganizationViewSet(viewsets.ModelViewSet):
       "percentage_change": percentage_change
     }
     
-  # def _get_total_revenue_analytics(self, organizer):
-  #   this_month_start, last_month_start, _ = self._get_month_date_ranges()
-  #   total = Payment.objects.filter
+  def _get_total_revenue_analytics(self, organizer):
+    this_month_start, last_month_start, _ = self._get_month_date_ranges()
+    ticket_ids = Ticket.objects.filter(event__organizer=organizer).values_list('id', flat=True)
 
+    total = PaymentItem.objects.filter(
+      ticket_id__in=ticket_ids,
+      payment__status='success'
+    ).aggregate(total=Sum(F('unit_price') * F('quantity')))['total'] or 0
     
+    this_month_total = PaymentItem.objects.filter(
+        ticket_id__in=ticket_ids,
+        payment__status='success',
+        payment__created_at__gte=this_month_start,
+    ).aggregate(total=Sum(F('unit_price') * F('quantity')))['total'] or 0
+
+    last_month_total = PaymentItem.objects.filter(
+        ticket_id__in=ticket_ids,
+        payment__status='success',
+        payment__created_at__gte=last_month_start,
+        payment__created_at__lt=this_month_start,
+    ).aggregate(total=Sum(F('unit_price') * F('quantity')))['total'] or 0
     
+    percentage_change = self._calculate_percentage_change(last_month_total, this_month_total)
+    
+    return {
+      "total": total,
+      "percentage_change": percentage_change
+    }
+
+  def _get_events_last_12_months(self, organizer):
+    today = timezone.now().date()
+    start_date = today.replace(day=1) - timedelta(days=365)
+
+    # Get monthly counts
+    monthly_counts = (
+        Event.objects.filter(organizer=organizer, created_at__gte=start_date)
+        .annotate(month=TruncMonth('created_at'))
+        .values('month')
+        .annotate(count=Count('id'))
+        .order_by('month')
+    )
+
+    monthly_data = OrderedDict()
+    for i in range(12):
+        month_date = (today.replace(day=1) - timedelta(days=30 * i)).replace(day=1)
+        month_name = month_date.strftime('%b %Y')  # e.g., "Apr 2025"
+        monthly_data[month_name] = 0
+
+    for entry in monthly_counts:
+        month_name = entry['month'].strftime('%b %Y')
+        if month_name in monthly_data:
+            monthly_data[month_name] = entry['count']
+
+    return OrderedDict(reversed(list(monthly_data.items())))
+    
+  def _get_user_growth_last_12_months(self, organizer):
+    today = timezone.now().date()
+    start_date = today.replace(day=1) - timedelta(days=365)
+
+    # Query: Group UserTickets by month
+    monthly_counts = (
+        UserTicket.objects.filter(
+            ticket__event__organizer=organizer,
+            purchase_date__gte=start_date
+        )
+        .annotate(month=TruncMonth('purchase_date'))
+        .values('month')
+        .annotate(count=Count('id'))
+        .order_by('month')
+    )
+
+    monthly_data = OrderedDict()
+    for i in range(12):
+        month_date = (today.replace(day=1) - timedelta(days=30 * i)).replace(day=1)
+        month_label = month_date.strftime('%b %Y')  
+        monthly_data[month_label] = 0
+
+    for entry in monthly_counts:
+        label = entry['month'].strftime('%b %Y')
+        if label in monthly_data:
+            monthly_data[label] = entry['count']
+
+    return OrderedDict(reversed(list(monthly_data.items())))

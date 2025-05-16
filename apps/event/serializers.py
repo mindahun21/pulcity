@@ -140,8 +140,7 @@ class EventSerializer(serializers.ModelSerializer):
           return RatingSerializer(rating, context=self.context).data
       except Rating.DoesNotExist:
           return None
-
-  
+        
   def validate_hashtags_list(self, value):
     if not all(isinstance(name, str) and name.strip() for name in value):
       raise serializers.ValidationError("Each hashtag must be a non-empty string.")
