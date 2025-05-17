@@ -21,6 +21,7 @@ from apps.payment.models import Payment , PaymentItem
 from apps.user.serializers import UserSerializer
 from apps.event.serializers import EventSerializer, CategorySerializer
 from ..serializers import UserWithAnyProfileDocSerializer, UserWithOrganizationProfileDocSerializer
+from .serializers import ScanSerializer
 
 from ..utils import ResponsePagination
 from drf_spectacular.utils import extend_schema, OpenApiResponse, inline_serializer
@@ -36,7 +37,7 @@ class OrganizationViewSet(viewsets.ModelViewSet):
     return CustomUser.objects.filter(role='organization')
   
   def get_permissions(self):
-    if self.action in ['org_followers','events','analytics']:
+    if self.action in ['org_followers','events','analytics','scan']:
       return [permissions.IsAuthenticated(), IsOrganization()]
     return [permissions.IsAuthenticated()]
   
@@ -251,6 +252,29 @@ class OrganizationViewSet(viewsets.ModelViewSet):
       "event_growth":self._get_events_last_12_months(org),
       "user_growth":self._get_user_growth_last_12_months(org)
     }, status=status.HTTP_200_OK)
+    
+  @action(detail=False,methods=['post'], url_path='tickets/scan')
+  def scan(self, request):
+    org = request.user
+    serializer = ScanSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+
+    user_ticket = serializer.validated_data['user_ticket']
+    event = serializer.validated_data['event']
+
+    if event.organizer != org:
+        return Response({"detail": "Event not owned by you."}, status=status.HTTP_403_FORBIDDEN)
+
+    user_ticket.used = True
+    user_ticket.save()
+
+    return Response({
+        "detail": "Ticket scanned successfully.",
+        "user": user_ticket.user.email if user_ticket.user else None,
+        "ticket": user_ticket.ticket.name,
+        "event": event.title
+    }, status=status.HTTP_200_OK)
+    
     
   @extend_schema(responses=UserWithOrganizationProfileDocSerializer())
   def retrieve(self, request, *args, **kwargs):
