@@ -303,6 +303,10 @@ class EventViewSet(viewsets.ModelViewSet):
       serializer = self.get_serializer(events, many=True, context={'request': request})
       return Response(serializer.data, status=200)
       
+  @extend_schema(
+    description="Retrieve upcoming events that the authenticated user has purchased tickets for.",
+    responses={200: EventSerializer(many=True)}
+  )
   @action(detail=False, methods=['get'])
   def upcoming(self, request):
     user = request.user

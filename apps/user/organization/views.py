@@ -37,8 +37,10 @@ class OrganizationViewSet(viewsets.ModelViewSet):
     return CustomUser.objects.filter(role='organization')
   
   def get_permissions(self):
-    if self.action in ['org_followers','events','analytics','scan']:
+    if self.action in ['org_followers','events','analytics']:
       return [permissions.IsAuthenticated(), IsOrganization()]
+    elif self.action in ['scan']:
+      return [permissions.AllowAny()]
     return [permissions.IsAuthenticated()]
   
   @extend_schema(
@@ -253,17 +255,29 @@ class OrganizationViewSet(viewsets.ModelViewSet):
       "user_growth":self._get_user_growth_last_12_months(org)
     }, status=status.HTTP_200_OK)
     
+  @extend_schema(
+    description="Scan user tickets on the event gates (making the ticket used)",
+    request=ScanSerializer(),
+    responses=OpenApiResponse(
+          response=inline_serializer(
+              name="AcanticketResponse",
+              fields={
+                      "detail": serializers.CharField(),
+                      "user": serializers.CharField(),
+                      "ticket": serializers.CharField(),
+                      "event": serializers.CharField(),
+                    }
+                 
+          )
+      )
+  )
   @action(detail=False,methods=['post'], url_path='tickets/scan')
   def scan(self, request):
-    org = request.user
     serializer = ScanSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
 
     user_ticket = serializer.validated_data['user_ticket']
     event = serializer.validated_data['event']
-
-    if event.organizer != org:
-        return Response({"detail": "Event not owned by you."}, status=status.HTTP_403_FORBIDDEN)
 
     user_ticket.used = True
     user_ticket.save()
