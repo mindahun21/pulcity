@@ -364,26 +364,7 @@ class EventViewSet(viewsets.ModelViewSet):
       serialized_events.data
     )
   
-  @extend_schema(
-    request=None,
-    description="retrieve the list of tickets bought by currently authenticated user.",
-    responses=TicketSerializer(many=True)
-  )
-  @action(detail=False, methods=['get'], url_path='user/tickets/bought')
-  def bought_tickets(self, request):
-    user = request.user
-    user_tickets = UserTicket.objects.filter(user=user).select_related('ticket')
 
-    ticket_ids = user_tickets.values_list('ticket_id', flat=True).distinct()
-    tickets = Ticket.objects.filter(id__in=ticket_ids)
-
-    paginator = ResponsePagination()
-    paginated_tickets = paginator.paginate_queryset(tickets, request)
-    serialized = TicketSerializer(paginated_tickets, many=True, context={'request': request})
-    
-    return paginator.get_paginated_response(
-      serialized.data
-    )
     
       
       
