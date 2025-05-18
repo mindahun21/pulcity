@@ -17,11 +17,13 @@ from rest_framework.decorators import action
 from apps.event.models import Event, Category, UserTicket, Ticket
 from apps.user.models import CustomUser
 from apps.payment.models import Payment , PaymentItem
+from apps.community.models import Community
 
 from apps.user.serializers import UserSerializer
 from apps.event.serializers import EventSerializer, CategorySerializer
 from ..serializers import UserWithAnyProfileDocSerializer, UserWithOrganizationProfileDocSerializer
 from .serializers import ScanSerializer
+from apps.community.serializers import CommunitySerializer
 
 from ..utils import ResponsePagination
 from drf_spectacular.utils import extend_schema, OpenApiResponse, inline_serializer
@@ -37,7 +39,7 @@ class OrganizationViewSet(viewsets.ModelViewSet):
     return CustomUser.objects.filter(role='organization')
   
   def get_permissions(self):
-    if self.action in ['org_followers','events','analytics']:
+    if self.action in ['org_followers','events','analytics','groups']:
       return [permissions.IsAuthenticated(), IsOrganization()]
     elif self.action in ['scan']:
       return [permissions.AllowAny()]
@@ -289,6 +291,22 @@ class OrganizationViewSet(viewsets.ModelViewSet):
         "event": event.title
     }, status=status.HTTP_200_OK)
     
+  @extend_schema(
+    description="Retreive all the groups associated with an organizer  ",
+    responses=CommunitySerializer(many=True)
+  )
+  @action(detail=False, methods=['get'])
+  def groups(self, request):
+    org = request.user
+    communities = Community.objects.filter(event__organizer=org).distinct()
+    
+    paginator = ResponsePagination()
+    paginated_communities = paginator.paginate_queryset(communities, request)
+    serialized = CommunitySerializer(paginated_communities, many=True, context={'request':request})
+    
+    return paginator.get_paginated_response(  
+      serialized.data
+    )
     
   @extend_schema(responses=UserWithOrganizationProfileDocSerializer())
   def retrieve(self, request, *args, **kwargs):

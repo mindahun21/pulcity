@@ -6,7 +6,8 @@ from rest_framework import(
 )
 from rest_framework.response import Response
 from apps.event.serializers import EventSerializer
-from apps.event.models import Event, Ticket, UserTicket, Bookmark
+from apps.event.rating.serializers import RatingSerializer
+from apps.event.models import Event, Ticket, UserTicket, Bookmark, Rating
 from apps.event.ticket.serializers import TicketSerializer,UserTicketSerializer
 from commons.permisions import IsOrganization
 from commons.utils import ResponsePagination
@@ -81,7 +82,6 @@ class EventViewSet(viewsets.ModelViewSet):
     serializer = UserTicketSerializer(paginated_user_tickets, many=True, context={"request": request})
     return paginator.get_paginated_response(serializer.data)
 
-  
   @extend_schema(
     description="Toggle liked status of the event specified by the parameter id for authenticated user.",
     request=None,
@@ -326,11 +326,64 @@ class EventViewSet(viewsets.ModelViewSet):
       serializer.data
     )
     
-      
-      
-      
-      
-      
-      
+  @extend_schema(
+    description="Retrieve paginated event ratings for event specified by id.",
+    responses={200: RatingSerializer(many=True)}
+  )
+  @action(detail=True, methods=['get'])
+  def ratings(self, request, id=None):
+    event = self.get_object()
+    ratings = Rating.objects.filter(event=event)
+    
+    paginator = ResponsePagination()
+    paginated_ratings = paginator.paginate_queryset(ratings, request)
+
+    serializer = RatingSerializer(paginated_ratings, many=True,context={"request":request})
+    return paginator.get_paginated_response(  
+      serializer.data
+    ) 
+    
+  @extend_schema(
+    request=None,
+    description="retrieve the list of events attended by currently authenticated user.",
+    responses=EventSerializer(many=True)
+  )
+  @action(detail=False, methods=['get'], url_path='attended')
+  def attended(self, request):
+    user = request.user
+    user_tickets = UserTicket.objects.filter(user=user, used=True).select_related('ticket__event')
+
+    event_ids = user_tickets.values_list('ticket__event_id', flat=True).distinct()
+    events = Event.objects.filter(id__in=event_ids)
+
+    paginator = ResponsePagination()
+    paginated_events = paginator.paginate_queryset(events, request)
+    serialized_events = EventSerializer(paginated_events, many=True, context={'request': request})
+    
+    return paginator.get_paginated_response(
+      serialized_events.data
+    )
+  
+  @extend_schema(
+    request=None,
+    description="retrieve the list of tickets bought by currently authenticated user.",
+    responses=TicketSerializer(many=True)
+  )
+  @action(detail=False, methods=['get'], url_path='user/tickets/bought')
+  def bought_tickets(self, request):
+    user = request.user
+    user_tickets = UserTicket.objects.filter(user=user).select_related('ticket')
+
+    ticket_ids = user_tickets.values_list('ticket_id', flat=True).distinct()
+    tickets = Ticket.objects.filter(id__in=ticket_ids)
+
+    paginator = ResponsePagination()
+    paginated_tickets = paginator.paginate_queryset(tickets, request)
+    serialized = TicketSerializer(paginated_tickets, many=True, context={'request': request})
+    
+    return paginator.get_paginated_response(
+      serialized.data
+    )
+    
       
       

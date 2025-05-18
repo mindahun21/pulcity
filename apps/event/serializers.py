@@ -1,11 +1,12 @@
 import logging
 from rest_framework import serializers
-from .models import Category, Event, Hashtag, Bookmark, Rating
+from .models import Category, Event, Hashtag, Bookmark, Rating, UserTicket
 from apps.community.models import Community
 from apps.user.serializers import UserWithOrganizationProfileDocSerializer
 from drf_spectacular.utils import extend_schema_field
-from django.db.models import Avg
+from django.db.models import Avg, Sum, F, ExpressionWrapper,DecimalField
 from apps.event.rating.serializers import RatingSerializer
+from apps.payment.models import PaymentItem
 
 
 logger = logging.getLogger("django")
@@ -66,6 +67,9 @@ class EventSerializer(serializers.ModelSerializer):
   average_rating = serializers.SerializerMethodField()
   rating = serializers.SerializerMethodField()
   
+  attendee_count =serializers.SerializerMethodField()
+  has_attended = serializers.SerializerMethodField()
+  has_ticket= serializers.SerializerMethodField()
   
   class Meta:
     model = Event
@@ -94,12 +98,22 @@ class EventSerializer(serializers.ModelSerializer):
       'rating_count',
       'bookmarks_count',
       'rating',
+      'attendee_count',
+      'has_attended',
+      'has_ticket',
       'bookmarked',
       'created_at',
       'updated_at',
     ]
     read_only_fields = ['id', 'organizer', 'created_at', 'updated_at']
     
+  def to_representation(self, instance):
+    rep = super().to_representation(instance)
+    request = self.context.get('request')
+    if request and instance.organizer == request.user:
+        rep['total_revenue'] = self.get_total_revenue(instance)
+    return rep
+
   @extend_schema_field(serializers.IntegerField())
   def get_likes_count(self, obj):
     return obj.likes.all().count()
@@ -141,6 +155,32 @@ class EventSerializer(serializers.ModelSerializer):
       except Rating.DoesNotExist:
           return None
         
+  @extend_schema_field(serializers.IntegerField())
+  def get_attendee_count(self, obj):
+    return UserTicket.objects.filter(ticket__event=obj, used= True).count()
+  
+  @extend_schema_field(serializers.BooleanField())
+  def get_has_ticket(self, obj):
+    user = self.context['request'].user
+    return UserTicket.objects.filter(ticket__event=obj, user=user).exists()
+  
+  @extend_schema_field(serializers.IntegerField())
+  def get_total_revenue(self, obj):
+    total_revenue = PaymentItem.objects.filter(ticket__event = obj).aggregate(
+      total=Sum(
+        ExpressionWrapper(
+          F('unit_price') * F('quantity'),
+          output_field=DecimalField()
+        )
+      )
+    )['total'] or 0
+    return total_revenue
+
+  @extend_schema_field(serializers.BooleanField())
+  def get_has_attended(self, obj):
+      user = self.context['request'].user
+      return UserTicket.objects.filter(user=user, ticket__event=obj,used=True).exists()
+         
   def validate_hashtags_list(self, value):
     if not all(isinstance(name, str) and name.strip() for name in value):
       raise serializers.ValidationError("Each hashtag must be a non-empty string.")
