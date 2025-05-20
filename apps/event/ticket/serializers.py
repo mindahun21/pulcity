@@ -10,6 +10,7 @@ class TicketSerializer(serializers.ModelSerializer):
             'id',          
             'event', 
             'name',
+            'description',
             'price',
             'valid_from',
             'valid_until',
