@@ -363,6 +363,27 @@ class EventViewSet(viewsets.ModelViewSet):
     return paginator.get_paginated_response(
       serialized_events.data
     )
+    
+  # @extend_schema(
+  #   request=None,
+  #   description="Retrieve a list of events the currently authenticated user is interested in.",
+  #   responses=EventSerializer(many=True)
+  # )
+  # @action(detail=False, methods=['get'])
+  # def interests(self, request):
+  #   user = request.user
+    
+  #   paginator = ResponsePagination()
+  #   paginated_events = paginator.paginate_queryset(events, request)
+  #   serialized_events = EventSerializer(paginated_events, many=True, context={'request': request})
+    
+  #   return paginator.get_paginated_response(
+  #     serialized_events.data
+  #   )
+    
+  
+  
+  
   
 
     
