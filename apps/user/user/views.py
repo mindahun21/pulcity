@@ -6,15 +6,14 @@ from rest_framework import (
 from rest_framework.response import Response
 from rest_framework.decorators import action
 
-from apps.user.serializers import UserSerializer
-from apps.user.models import CustomUser
+from apps.user.serializers import UserSerializer,ProfileSerializer
+from apps.user.models import CustomUser, Profile
 from ..utils import ResponsePagination
 from drf_spectacular.utils import extend_schema
 from ..serializers import UserWithOrganizationProfileDocSerializer
-from apps.event.models import Bookmark, UserTicket, Event
+from apps.event.models import Bookmark, Rating
 from apps.event.serializers import EventSerializer
-from apps.event.ticket.serializers import TicketSerializer
-
+from apps.event.rating.serializers import UserRatingSerializer
 @extend_schema(tags=["user management"])
 class UserViewSet(viewsets.ModelViewSet):
   serializer_class = UserSerializer
@@ -55,6 +54,38 @@ class UserViewSet(viewsets.ModelViewSet):
     
     return paginator.get_paginated_response(
       serialized_bookmarks.data
+    )
+    
+  @extend_schema(
+    description="Partially update the authenticated user's profile. (normal user not organizer)",
+    request=ProfileSerializer,
+    responses=ProfileSerializer
+  )
+  @action(detail=False, methods=['patch'], url_path='profile')
+  def update_my_profile(self, request):
+    try:
+      profile = request.user._user_profile
+    except Profile.DoesNotExist:
+        return Response({"detail": "Profile not found."}, status=status.HTTP_404_NOT_FOUND)
+
+    serializer = ProfileSerializer(profile, data=request.data, partial=True)
+    serializer.is_valid(raise_exception=True)
+    serializer.save()
+
+    return Response(serializer.data)
+  
+  @extend_schema(description="Retrieve a paginated list of ratings created by the currently authenticated user so far.")
+  @action(detail=False, methods=['get'])
+  def ratings(self, request):
+    user = request.user
+    ratings = Rating.objects.filter(user=user).order_by('-created_at')
+    
+    paginator = ResponsePagination()
+    paginated = paginator.paginate_queryset(ratings, request)
+    serialized = UserRatingSerializer(paginated, many=True, context={'request': request})
+    
+    return paginator.get_paginated_response(
+      serialized.data
     )
   
   @extend_schema(exclude=True)

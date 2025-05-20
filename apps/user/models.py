@@ -55,6 +55,14 @@ class Profile(models.Model):
   user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name='_user_profile')
   bio = models.CharField(max_length=255, blank=True)
   
+  profile_photo_url = models.CharField(max_length=255, blank=True,null=True)
+  phone_number = models.CharField(max_length=20, blank=True, null=True)
+  date_of_birth = models.DateField(blank=True, null=True)
+  location = models.CharField(max_length=255, blank=True ,null=True)  
+  interests = models.JSONField(blank=True, null=True) 
+
+  created_at = models.DateTimeField(auto_now_add=True)
+  updated_at = models.DateTimeField(auto_now=True)
 
 class OrganizationProfile(models.Model):
     user = models.OneToOneField(

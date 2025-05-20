@@ -15,11 +15,11 @@ from rest_framework.response import Response
 from rest_framework.decorators import action
 
 from apps.event.models import Event, Category, UserTicket, Ticket
-from apps.user.models import CustomUser
+from apps.user.models import CustomUser, OrganizationProfile
 from apps.payment.models import Payment , PaymentItem
 from apps.community.models import Community
 
-from apps.user.serializers import UserSerializer
+from apps.user.serializers import UserSerializer, OrganizationProfileSerializer
 from apps.event.serializers import EventSerializer, CategorySerializer
 from ..serializers import UserWithAnyProfileDocSerializer, UserWithOrganizationProfileDocSerializer
 from .serializers import ScanSerializer
@@ -307,6 +307,23 @@ class OrganizationViewSet(viewsets.ModelViewSet):
     return paginator.get_paginated_response(  
       serialized.data
     )
+  
+  @extend_schema(
+    description="Update Currently authenticated organization profile .",
+    request=OrganizationProfileSerializer(),
+    responses=OrganizationProfileSerializer()
+  )
+  @action(detail=False, methods=['patch'], url_path='profile')
+  def update_my_profile(self, request):
+      try:
+          profile = request.user._organization_profile
+      except OrganizationProfile.DoesNotExist:
+          return Response({'detail': 'Profile not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+      serializer = OrganizationProfileSerializer(profile, data=request.data, partial=True)
+      serializer.is_valid(raise_exception=True)
+      serializer.save()
+      return Response(serializer.data)
     
   @extend_schema(responses=UserWithOrganizationProfileDocSerializer())
   def retrieve(self, request, *args, **kwargs):
