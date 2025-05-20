@@ -7,7 +7,7 @@ from rest_framework import(
 from rest_framework.response import Response
 from apps.event.serializers import EventSerializer
 from apps.event.rating.serializers import RatingSerializer
-from apps.event.models import Event, Ticket, UserTicket, Bookmark, Rating
+from apps.event.models import Event, Ticket, UserTicket, Bookmark, Rating, Category, Hashtag
 from apps.event.ticket.serializers import TicketSerializer,UserTicketSerializer
 from commons.permisions import IsOrganization
 from commons.utils import ResponsePagination
@@ -20,6 +20,8 @@ from django.utils import timezone
 from functools import reduce
 from operator import or_
 
+import logging
+logger = logging.getLogger('django')
 
 @extend_schema(tags=["Event management"])
 class EventViewSet(viewsets.ModelViewSet):
@@ -364,22 +366,59 @@ class EventViewSet(viewsets.ModelViewSet):
       serialized_events.data
     )
     
-  # @extend_schema(
-  #   request=None,
-  #   description="Retrieve a list of events the currently authenticated user is interested in.",
-  #   responses=EventSerializer(many=True)
-  # )
-  # @action(detail=False, methods=['get'])
-  # def interests(self, request):
-  #   user = request.user
+  @extend_schema(
+    request=None,
+    responses={
+        200: EventSerializer(many=True),
+    },
+  )
+  @action(detail=False, methods=['get'])
+  def recomendations(self, request):
+    """
+    Retrieve a list of recommended events for the currently authenticated user.
+
+    The recommendations are based on the user's saved interests and social behavior:
     
-  #   paginator = ResponsePagination()
-  #   paginated_events = paginator.paginate_queryset(events, request)
-  #   serialized_events = EventSerializer(paginated_events, many=True, context={'request': request})
+    - **Categories**: Events that belong to categories the user is interested in.
+    - **Hashtags**: Events that contain tags matching the user's interests.
+    - **Followed Organizers**: Events organized by users the current user follows.
+
+    The result is sorted by highest average rating and most likes.
+
+    **Authentication required.**
+    """
+    user = request.user
+    interests = user.profile.interests or {}
     
-  #   return paginator.get_paginated_response(
-  #     serialized_events.data
-  #   )
+
+    categories = interests.get('categories', [])
+    tags = interests.get('tags', [])
+    followed_orgs = user.following.values_list('followed', flat=True)
+    logger.info(f"User {user.id} interests - Categories: {categories}, Tags: {tags}")
+
+    category_objs = Category.objects.filter(name__in=categories)
+    hashtag_objs = Hashtag.objects.filter(name__in=tags)
+
+    logger.info(f"User {user.id} matching hashtags: {[h.name for h in hashtag_objs]}")
+
+    events = Event.objects.filter(
+      Q(category__in=category_objs) |
+      Q(hashtags__in=hashtag_objs) |
+      Q(organizer__in=followed_orgs)
+    ).distinct() if category_objs or hashtag_objs or followed_orgs else Event.objects.all()
+
+    events = events.annotate(
+        avg_rating=Avg('ratings__value'),
+        likes_count=Count('likes')
+    ).order_by('-avg_rating', '-likes_count')
+    
+    paginator = ResponsePagination()
+    paginated_events = paginator.paginate_queryset(events, request)
+    serialized_events = EventSerializer(paginated_events, many=True, context={'request': request})
+    
+    return paginator.get_paginated_response(
+      serialized_events.data
+    )
     
   
   
