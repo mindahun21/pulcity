@@ -41,7 +41,7 @@ class OrganizationViewSet(viewsets.ModelViewSet):
   def get_permissions(self):
     if self.action in ['org_followers','events','analytics','groups']:
       return [permissions.IsAuthenticated(), IsOrganization()]
-    elif self.action in ['scan','verify']:
+    elif self.action in ['scan','verify','list']:
       return [permissions.AllowAny()]
     return [permissions.IsAuthenticated()]
   
@@ -372,10 +372,33 @@ class OrganizationViewSet(viewsets.ModelViewSet):
   def retrieve(self, request, *args, **kwargs):
     return super().retrieve(request, *args, **kwargs)
     
-  @extend_schema(exclude=True)
+  @extend_schema(
+    description="List organization profiles, optionally filtered by verification_status.",
+    parameters=[
+        OpenApiParameter(
+            name="status",
+            description="Filter by verification_status (e.g., pending, approved, denied)",
+            required=False,
+            type=str,
+            location=OpenApiParameter.QUERY,
+        ),
+    ],
+    responses=UserWithOrganizationProfileDocSerializer(many=True)
+  )
   def list(self, request):
-      """Hidden from schema."""
-      return Response({'detail': 'Method not allowed'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+    status_param = request.query_params.get("status")
+
+    queryset = self.get_queryset()
+    if status_param:
+        queryset = queryset.filter(role='organization', _organization_profile__verification_status=status_param)
+
+    paginator = ResponsePagination()
+    paginated_queryset = paginator.paginate_queryset(queryset, request)
+    
+    serializer = self.get_serializer(paginated_queryset,context={'request':request}, many=True)
+    return paginator.get_paginated_response(
+      serializer.data
+    )
   
   @extend_schema(exclude=True)
   def create(self, request):
