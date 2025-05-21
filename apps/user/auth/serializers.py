@@ -31,6 +31,7 @@ class OrganizationRegisterSerializer(serializers.ModelSerializer):
     description = serializers.CharField(required=False, allow_blank=True, write_only=True)
     logo_url = serializers.CharField(required=False, allow_null=True, write_only=True)
     contact_phone = serializers.CharField(required=False, allow_blank=True, write_only=True)
+    verification_id = serializers.CharField(required=False, allow_blank=True, write_only=True)
     website_url = serializers.URLField(required=False, allow_blank=True, write_only=True)
     social_media_links = serializers.JSONField(required=False, allow_null=True, write_only=True)
 
@@ -39,7 +40,7 @@ class OrganizationRegisterSerializer(serializers.ModelSerializer):
         fields = [
             'email','password',
             'name', 'description', 'logo_url',
-            'contact_phone', 'website_url', 'social_media_links'
+            'contact_phone', 'website_url', 'social_media_links','verification_id'
         ]
 
     def create(self, validated_data):
@@ -51,6 +52,7 @@ class OrganizationRegisterSerializer(serializers.ModelSerializer):
             'contact_phone': validated_data.pop('contact_phone', ''),
             'website_url': validated_data.pop('website_url', ''),
             'social_media_links': validated_data.pop('social_media_links', {}),
+            'verification_id': validated_data.pop('verification_id', ''),
         }
 
         user = CustomUser.objects.create_user(

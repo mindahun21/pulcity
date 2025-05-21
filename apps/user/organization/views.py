@@ -26,7 +26,7 @@ from .serializers import ScanSerializer
 from apps.community.serializers import CommunitySerializer
 
 from ..utils import ResponsePagination
-from drf_spectacular.utils import extend_schema, OpenApiResponse, inline_serializer
+from drf_spectacular.utils import extend_schema, OpenApiResponse, inline_serializer, OpenApiParameter
 from commons.permisions import IsOrganization
 
 
@@ -41,7 +41,7 @@ class OrganizationViewSet(viewsets.ModelViewSet):
   def get_permissions(self):
     if self.action in ['org_followers','events','analytics','groups']:
       return [permissions.IsAuthenticated(), IsOrganization()]
-    elif self.action in ['scan']:
+    elif self.action in ['scan','verify']:
       return [permissions.AllowAny()]
     return [permissions.IsAuthenticated()]
   
@@ -324,6 +324,49 @@ class OrganizationViewSet(viewsets.ModelViewSet):
       serializer.is_valid(raise_exception=True)
       serializer.save()
       return Response(serializer.data)
+
+  @extend_schema(
+      description="Change the verification_status of an organization.",
+      request=None,
+      parameters=[
+          OpenApiParameter(
+              name="status",
+              description="New verification status (e.g., pending, approved, rejected)",
+              required=True,
+              type=str
+          )
+      ],
+      responses=OrganizationProfileSerializer(),
+      methods=["POST"],
+      operation_id="verifyOrganizationStatus", 
+  )
+  @action(detail=True, methods=['post'], url_path='verify')
+  def verify(self, request, id=None):
+    status_param = request.query_params.get("status")
+    allowed_statuses = ['pending', 'approved', 'denied']
+
+    if not status_param:
+        return Response(
+            {"detail": "Missing required 'status' query parameter."},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    if status_param not in allowed_statuses:
+        return Response(
+            {"detail": f"Invalid status. Must be one of {allowed_statuses}."},
+            status=status.HTTP_400_BAD_REQUEST
+        )  
+        
+    org = self.get_object()
+    try:
+        profile = org._organization_profile
+    except OrganizationProfile.DoesNotExist:
+          return Response({'detail': 'Profile not found.'}, status=status.HTTP_404_NOT_FOUND)
+        
+    profile.verification_status = status_param
+    profile.save()
+    serializer = OrganizationProfileSerializer(profile)
+    return Response(serializer.data, status=status.HTTP_200_OK)
     
   @extend_schema(responses=UserWithOrganizationProfileDocSerializer())
   def retrieve(self, request, *args, **kwargs):

@@ -65,22 +65,30 @@ class Profile(models.Model):
   updated_at = models.DateTimeField(auto_now=True)
 
 class OrganizationProfile(models.Model):
-    user = models.OneToOneField(
-        CustomUser,
-        on_delete=models.CASCADE,
-        related_name='_organization_profile'
-    )
-    name = models.CharField(max_length=255, validators=[MinLengthValidator(2)])
-    description = models.TextField(blank=True, null=True)
-    logo_url = models.CharField(max_length=255, blank=True,null=True)
-    contact_phone = models.CharField(max_length=20, blank=True, null=True)
-    website_url = models.URLField(blank=True, null=True)
-    social_media_links = models.JSONField(blank=True, null=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+  VERIFICATION_STATUS = (
+    ('approved', 'Approved'),
+    ('pending', 'Pending'),
+    ('denied', 'Denied'),
+  )
+  
+  user = models.OneToOneField(
+      CustomUser,
+      on_delete=models.CASCADE,
+      related_name='_organization_profile'
+  )
+  name = models.CharField(max_length=255, validators=[MinLengthValidator(2)])
+  description = models.TextField(blank=True, null=True)
+  logo_url = models.CharField(max_length=255, blank=True,null=True)
+  contact_phone = models.CharField(max_length=20, blank=True, null=True)
+  website_url = models.URLField(blank=True, null=True)
+  social_media_links = models.JSONField(blank=True, null=True)
+  verification_id = models.CharField(max_length=255, blank=True, null=True)
+  verification_status = models.CharField(max_length=20, choices=VERIFICATION_STATUS, default='pending')
+  created_at = models.DateTimeField(auto_now_add=True)
+  updated_at = models.DateTimeField(auto_now=True)
 
-    def __str__(self):
-        return self.name
+  def __str__(self):
+      return self.name
       
       
 class Follow(models.Model):

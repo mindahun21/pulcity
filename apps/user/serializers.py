@@ -2,6 +2,7 @@ from rest_framework import serializers
 from .models import Profile, OrganizationProfile, CustomUser
 from drf_spectacular.utils import extend_schema_field
 from drf_spectacular.types import OpenApiTypes
+from rest_framework.exceptions import ValidationError 
 
 
 class ProfileSerializer(serializers.ModelSerializer):
@@ -20,7 +21,7 @@ class OrganizationProfileSerializer(serializers.ModelSerializer):
         model = OrganizationProfile
         fields = '__all__'
         extra_fields = ['is_following'] 
-        read_only_fields = ['user', 'created_at', 'updated_at'] 
+        read_only_fields = ['user', 'created_at', 'updated_at','verification_status'] 
         
     @extend_schema_field(serializers.BooleanField())
     def get_is_following(self, obj):
@@ -29,6 +30,7 @@ class OrganizationProfileSerializer(serializers.ModelSerializer):
         if user and user.is_authenticated:
             return user.is_following(obj.user)
         return False
+      
 
 class UserSerializer(serializers.ModelSerializer):
     profile = serializers.SerializerMethodField()
