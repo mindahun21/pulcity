@@ -41,7 +41,7 @@ class OrganizationViewSet(viewsets.ModelViewSet):
   def get_permissions(self):
     if self.action in ['org_followers','events','analytics','groups']:
       return [permissions.IsAuthenticated(), IsOrganization()]
-    elif self.action in ['scan','verify','list']:
+    elif self.action in ['scan','verify','list','destroy']:
       return [permissions.AllowAny()]
     return [permissions.IsAuthenticated()]
   
@@ -415,10 +415,10 @@ class OrganizationViewSet(viewsets.ModelViewSet):
       """Hidden from schema."""
       return Response({'detail': 'Method not allowed'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
-  @extend_schema(exclude=True)
-  def destroy(self, request, id=None):
-      """Hidden from schema."""
-      return Response({'detail': 'Method not allowed'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+  # @extend_schema(exclude=True)
+  # def destroy(self, request, id=None):
+  #     """Hidden from schema."""
+  #     return Response({'detail': 'Method not allowed'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
     
   def _get_month_date_ranges(self):
     now = timezone.now()
