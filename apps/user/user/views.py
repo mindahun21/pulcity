@@ -71,8 +71,10 @@ class UserViewSet(viewsets.ModelViewSet):
     serializer = ProfileSerializer(profile, data=request.data, partial=True)
     serializer.is_valid(raise_exception=True)
     serializer.save()
+    
+    serialized_user = self.serializer_class(request.user)
 
-    return Response(serializer.data)
+    return Response(serialized_user.data)
   
   @extend_schema(description="Retrieve a paginated list of ratings created by the currently authenticated user so far.")
   @action(detail=False, methods=['get'])

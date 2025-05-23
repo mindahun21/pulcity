@@ -323,7 +323,10 @@ class OrganizationViewSet(viewsets.ModelViewSet):
       serializer = OrganizationProfileSerializer(profile, data=request.data, partial=True)
       serializer.is_valid(raise_exception=True)
       serializer.save()
-      return Response(serializer.data)
+      
+      org = request.user
+      serialized_user = UserSerializer(org, context={'request':request})
+      return Response(serialized_user.data)
 
   @extend_schema(
       description="Change the verification_status of an organization.",

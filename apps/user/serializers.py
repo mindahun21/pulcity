@@ -6,10 +6,28 @@ from rest_framework.exceptions import ValidationError
 
 
 class ProfileSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Profile
-        fields = '__all__'
-        read_only_fields = ['user', 'created_at', 'updated_at'] 
+  first_name = serializers.CharField(required=False, write_only=True)
+  last_name = serializers.CharField(required=False, write_only=True)
+  class Meta:
+      model = Profile
+      fields = '__all__'
+      read_only_fields = ['user', 'created_at', 'updated_at'] 
+  
+  def update(self, instance, validated_data):
+    first_name = validated_data.pop('first_name', None)
+    last_name = validated_data.pop('last_name', None)
+    
+    user= instance.user
+    if first_name is not None:
+      user.first_name = first_name
+    
+    if last_name is not None:
+      user.last_name = last_name
+    
+    user.save()
+
+    return super().update(instance, validated_data)
+
 
 class OrganizationProfileSerializer(serializers.ModelSerializer):
     is_following = serializers.SerializerMethodField(read_only=True)

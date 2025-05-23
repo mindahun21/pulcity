@@ -78,6 +78,7 @@ class Ticket(models.Model):
     price = models.DecimalField(max_digits=10, decimal_places=2)
     valid_from = models.DateTimeField(null=True, blank=True)
     valid_until = models.DateTimeField(null=True, blank=True)
+    active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

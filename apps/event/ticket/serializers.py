@@ -14,6 +14,7 @@ class TicketSerializer(serializers.ModelSerializer):
             'price',
             'valid_from',
             'valid_until',
+            'active',
             'onsite_payement',
             'created_at',
             'updated_at'
