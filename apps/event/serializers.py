@@ -110,7 +110,7 @@ class EventSerializer(serializers.ModelSerializer):
   def to_representation(self, instance):
     rep = super().to_representation(instance)
     request = self.context.get('request')
-    if request and instance.organizer == request.user:
+    if request and request.user.is_authenticated and instance.organizer == request.user:
         rep['total_revenue'] = self.get_total_revenue(instance)
     return rep
 
@@ -121,6 +121,8 @@ class EventSerializer(serializers.ModelSerializer):
   @extend_schema_field(serializers.BooleanField())
   def get_liked(self, obj):
     request = self.context.get('request')
+    if not request.user.is_authenticated:
+      return False
     return obj.is_liked(request.user)
   
   @extend_schema_field(serializers.IntegerField())
@@ -130,11 +132,15 @@ class EventSerializer(serializers.ModelSerializer):
   @extend_schema_field(serializers.BooleanField())
   def get_bookmarked(self, obj):
     request = self.context.get('request')
+    if not request.user.is_authenticated:
+      return False
     return Bookmark.objects.filter(user=request.user, event=obj).exists()
   
   @extend_schema_field(serializers.BooleanField())
   def get_rated(self, obj):
     request = self.context.get('request')
+    if not request.user.is_authenticated:
+      return False
     return Rating.objects.filter(user=request.user, event=obj).exists()
   
   @extend_schema_field(serializers.IntegerField())
@@ -149,6 +155,8 @@ class EventSerializer(serializers.ModelSerializer):
   @extend_schema_field(RatingSerializer)
   def get_rating(self, obj):
       request = self.context.get('request')
+      if not request.user.is_authenticated:
+        return None
       try:
           rating = Rating.objects.get(event=obj, user=request.user)
           return RatingSerializer(rating, context=self.context).data
@@ -162,6 +170,8 @@ class EventSerializer(serializers.ModelSerializer):
   @extend_schema_field(serializers.BooleanField())
   def get_has_ticket(self, obj):
     user = self.context['request'].user
+    if not user.is_authenticated:
+      return False
     return UserTicket.objects.filter(ticket__event=obj, user=user).exists()
   
   @extend_schema_field(serializers.IntegerField())
@@ -179,6 +189,8 @@ class EventSerializer(serializers.ModelSerializer):
   @extend_schema_field(serializers.BooleanField())
   def get_has_attended(self, obj):
       user = self.context['request'].user
+      if not user.is_authenticated:
+        return False
       return UserTicket.objects.filter(user=user, ticket__event=obj,used=True).exists()
          
   def validate_hashtags_list(self, value):

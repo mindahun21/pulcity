@@ -12,7 +12,7 @@ from apps.event.ticket.serializers import TicketSerializer,UserTicketSerializer
 from commons.permisions import IsOrganization
 from commons.utils import ResponsePagination
 from drf_spectacular.utils import extend_schema, OpenApiResponse, inline_serializer, OpenApiParameter
-from rest_framework.decorators import action
+from rest_framework.decorators import action, permission_classes
 
 from django.db.models import Q, Avg, Count,FloatField, Value
 from django.db.models.expressions import RawSQL
@@ -34,6 +34,8 @@ class EventViewSet(viewsets.ModelViewSet):
   def get_permissions(self):
     if self.action in ['update', 'delete', 'partial_update', 'create']:
       return [permissions.IsAuthenticated(), IsOrganization()]
+    elif self.action in ['popular']:
+      return [permissions.AllowAny()]
     return [permissions.IsAuthenticated()]
   
   @extend_schema(
