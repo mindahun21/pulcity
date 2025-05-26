@@ -6,6 +6,8 @@ attrs==25.3.0
 billiard==4.2.1
 celery==5.5.1
 certifi==2025.4.26
+channels==4.2.2
+channels_redis==4.2.1
 chapa==0.1.2
 click==8.1.8
 click-didyoumean==0.3.1
@@ -30,14 +32,17 @@ inflection==0.5.1
 jsonschema==4.23.0
 jsonschema-specifications==2025.4.1
 kombu==5.5.3
+msgpack==1.1.0
 packaging==25.0
 pillow==11.2.1
 prompt_toolkit==3.0.51
 psycopg2-binary==2.9.10
+pydot==4.0.0
 PyJWT==2.9.0
 pyparsing==3.2.3
 python-dateutil==2.9.0.post0
 python-decouple==3.8
+python-dotenv==1.1.0
 PyYAML==6.0.2
 redis==5.2.1
 referencing==0.36.2
@@ -48,5 +53,9 @@ sqlparse==0.5.3
 typing_extensions==4.13.2
 tzdata==2025.2
 uritemplate==4.1.1
+uvicorn==0.34.2
+uvloop==0.21.0
 vine==5.1.0
+watchfiles==1.0.5
 wcwidth==0.2.13
+websockets==15.0.1

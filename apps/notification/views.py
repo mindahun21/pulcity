@@ -53,7 +53,7 @@ class NotificationViewSet(viewsets.ModelViewSet):
       notification.save()
       return Response({"detail":"read operation success "}, status=status.HTTP_200_OK)
     else:
-      return Response({"detail":" this notiication is not yours!"}, status=status.HTTP_400_BAD_REQUEST)      
+      return Response({"detail":" this notification is not yours!"}, status=status.HTTP_400_BAD_REQUEST)      
   
   
   @extend_schema(exclude=True)

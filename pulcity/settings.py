@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'apps.notification',
 ]
 
+INSTALLED_APPS += ["channels"]
 
 if ENVIRONMENT == 'development':
     INSTALLED_APPS += ['django_extensions']
@@ -73,6 +74,7 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'pulcity.wsgi.application'
+ASGI_APPLICATION = "pulcity.asgi.application"
 AUTH_USER_MODEL= 'user.CustomUser'
 
 
@@ -204,6 +206,7 @@ EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD')
 CELERY_RESULT_BACKEND = config('CELERY_RESULT_BACKEND')
 CELERY_BROKER_URL = config("REDIS_URL", default="redis://redis:6379/0")
 
+
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -220,6 +223,10 @@ LOGGING = {
             'filename': os.path.join(BASE_DIR, 'logs/app.log'), 
             'formatter': 'verbose',
         },
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
     },
     'loggers': {
         'django': {
@@ -227,8 +234,24 @@ LOGGING = {
             'level': 'INFO',
             'propagate': True,
         },
+        'uvicorn': {
+            'handlers': ['file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'uvicorn.error': {
+            'handlers': ['file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'uvicorn.access': {
+            'handlers': ['file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
     },
 }
+
 
 SPECTACULAR_SETTINGS = {
     'SWAGGER_UI_DIST': 'SIDECAR', 
@@ -239,6 +262,23 @@ SPECTACULAR_SETTINGS = {
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
 }
+
+if DEBUG:
+  REDIS_HOST = "127.0.0.1"
+else:
+  REDIS_HOST = config("REDIS_HOST", "redis")
+  
+REDIS_PORT = int(config("REDIS_PORT", 6379))
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [(REDIS_HOST, REDIS_PORT)],
+        },
+    },
+}
+
 
 
 CHAPA_SECRET = config("CHAPA_SECRET")
