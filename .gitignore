@@ -63,6 +63,7 @@ node_modules/
 test/
 *.rest
 *tasks.md
+websocket.py
 test.rest
 test_output/
 coverage/
